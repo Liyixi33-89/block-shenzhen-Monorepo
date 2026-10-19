@@ -64,7 +64,7 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
   const armGeo = new THREE.BoxGeometry(0.9, 2.0, 0.9);
   const legMat = new THREE.MeshStandardMaterial({ color: 0x2a4a6a, roughness: 0.6 });
   const armMat = new THREE.MeshStandardMaterial({ color: 0xe8554d, roughness: 0.6 });
-  const mkLimb = (geo: THREE.BufferGeometry, mat: THREE.Material, y: number, dx: number, dz: number) => {
+  const mkLimb = (geo: THREE.BoxGeometry, mat: THREE.Material, y: number, dx: number, dz: number) => {
     const pivot = new THREE.Group();
     pivot.position.set(dx, y, dz);
     const mesh = new THREE.Mesh(geo, mat);

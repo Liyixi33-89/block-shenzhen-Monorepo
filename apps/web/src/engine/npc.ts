@@ -292,8 +292,8 @@ export class NpcSystem {
       if (shopItems?.length) choices.unshift({ text: '睇下有咩卖', next: 'stall' });
       const dialogue: DialogueNode[] = [
         { id: 'entry', text: job.lines[0], choices },
-        { id: 'reply1', text: '沿着这条街一直走就到了，小心看路。' },
-        { id: 'reply2', text: '哈哈，今日天气唔错，散散步几好。' },
+        { id: 'reply1', text: '沿着这条街一直走就到了，小心看路。', choices },
+        { id: 'reply2', text: '哈哈，今日天气唔错，散散步几好。', choices },
         ...(shopItems?.length ? [{ id: 'stall', text: shopItems.map(s => `${s.name} ¥${s.price}`).join('，'), choices: [{ text: '好，我买', next: 'buy' }, { text: '下次先', next: 'reply2' }] } as DialogueNode] : []),
       ];
       const npc: Npc = {

@@ -50,7 +50,7 @@ async function loadLandmarkModel(sceneId: string, landmarkId: string): Promise<T
  * 静态组合并优化：把组内所有 Mesh 按材质分桶合并为单 mesh，
  * 千级 draw call 降为每材质 1 次。Sprite/Line 保持原样。
  */
-function mergeStaticGroup(g: THREE.Group) {
+function mergeStaticGroup(g: THREE.Object3D) {
   g.updateMatrixWorld(true);
   const gInv = g.matrixWorld.clone().invert();
   const buckets = new Map<THREE.Material, THREE.BufferGeometry[]>();
