@@ -1,0 +1,20 @@
+{
+  "name": "block-shenzhen",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w apps/web",
+    "dev:admin": "npm run dev -w apps/admin",
+    "dev:server": "npm run dev -w apps/server",
+    "build": "npm run build -w packages/schema && npm run build -w packages/shared && npm run build -w apps/server && npm run build -w apps/web && npm run build -w apps/admin",
+    "test": "npm run test -ws --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "@block-sz/server",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/main.ts",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc --noEmit",
+    "start": "tsx src/main.ts",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "@block-sz/schema": "*",
+    "@block-sz/shared": "*",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.7",
+    "typescript": "^5.7.2",
+    "tsx": "^4.19.2"
+  }
+}

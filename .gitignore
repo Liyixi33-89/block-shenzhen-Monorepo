@@ -1,0 +1,38 @@
+# ---- 依赖 ----
+node_modules/
+
+# ---- 构建产物 ----
+dist/
+build/
+target/
+*.tsbuildinfo
+.vite/
+coverage/
+
+# ---- 本地数据 / 数据库（含用户数据，勿提交） ----
+*.sqlite
+*.sqlite3
+*.db
+data/
+
+# ---- 日志 ----
+*.log
+
+# ---- 环境变量（含真实密钥，用 .env.example 提供模板） ----
+.env
+.env.*
+!.env.example
+
+# ---- 会话/临时 ----
+.session_tmps/
+.tmp/
+temp/
+
+# ---- 系统 / IDE ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo

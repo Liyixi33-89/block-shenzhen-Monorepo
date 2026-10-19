@@ -1,0 +1,23 @@
+{
+  "name": "@block-sz/web",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@block-sz/schema": "*",
+    "@block-sz/shared": "*",
+    "pinia": "^2.3.0",
+    "three": "^0.170.0",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.3.5"
+  }
+}

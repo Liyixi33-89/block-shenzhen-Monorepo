@@ -1,0 +1,17 @@
+{
+  "name": "@block-sz/shared",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "node --test test/"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

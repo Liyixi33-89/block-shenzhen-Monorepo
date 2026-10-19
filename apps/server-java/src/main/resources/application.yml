@@ -1,0 +1,26 @@
+server:
+  port: 4001
+
+spring:
+  application:
+    name: block-sz-server
+  datasource:
+    url: ${BSZ_DB_URL:jdbc:mysql://127.0.0.1:3306/block_sz?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${BSZ_DB_USER:block_sz}
+    password: ${BSZ_DB_PASS:block_sz}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 8
+      minimum-idle: 2
+  # 建库：Spring SQL init 执行 schema.sql（幂等 CREATE IF NOT EXISTS）
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+  jackson:
+    default-property-inclusion: non_null
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-secret-change-me-0123456789abcdef}
+    ttl-hours: 12

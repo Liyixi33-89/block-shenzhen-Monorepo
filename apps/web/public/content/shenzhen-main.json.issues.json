@@ -1,0 +1,34 @@
+[
+  {
+    "path": "landmarks.25.id",
+    "message": "Expected string, received null"
+  },
+  {
+    "path": "landmarks.25.name",
+    "message": "Expected string, received null"
+  },
+  {
+    "path": "landmarks.25.district",
+    "message": "Expected string, received null"
+  },
+  {
+    "path": "landmarks.25.latlng.lat",
+    "message": "Expected number, received null"
+  },
+  {
+    "path": "landmarks.25.latlng.lng",
+    "message": "Expected number, received null"
+  },
+  {
+    "path": "traffic.routes.4.stations",
+    "message": "Array must contain at least 2 element(s)"
+  },
+  {
+    "path": "traffic.routes.8.stations",
+    "message": "Array must contain at least 2 element(s)"
+  },
+  {
+    "path": "traffic.routes.9.stations",
+    "message": "Array must contain at least 2 element(s)"
+  }
+]

@@ -1,0 +1,2319 @@
+{
+ "id": "shenzhen-main",
+ "name": "方块鹏城 · 深圳主场景",
+ "desc": "像素风深圳城市探索：9 区 25 地标、地铁 10 线 18 站、观光巴士、深圳湾游船、梧桐山索道",
+ "version": "0.3.4",
+ "projection": {
+  "origin": {
+   "lat": 22.5431,
+   "lng": 114.0579
+  },
+  "unitPerKm": 200,
+  "farCompress": 0.35
+ },
+ "districts": [
+  {
+   "id": "futian",
+   "name": "福田区",
+   "slogan": "城市中轴与CBD",
+   "color": 6000601,
+   "center": {
+    "lat": 22.5431,
+    "lng": 114.0579
+   },
+   "cityRadius": 620,
+   "density": "cbd",
+   "sortOrder": 1
+  },
+  {
+   "id": "luohu",
+   "name": "罗湖区",
+   "slogan": "老城与商业繁华",
+   "color": 15249482,
+   "center": {
+    "lat": 22.5455,
+    "lng": 114.1005
+   },
+   "cityRadius": 480,
+   "density": "urban",
+   "sortOrder": 2
+  },
+  {
+   "id": "nanshan",
+   "name": "南山区",
+   "slogan": "科技湾区",
+   "color": 2079144,
+   "center": {
+    "lat": 22.533,
+    "lng": 113.9555
+   },
+   "cityRadius": 520,
+   "density": "urban",
+   "sortOrder": 3
+  },
+  {
+   "id": "yantian",
+   "name": "盐田区",
+   "slogan": "山海港城",
+   "color": 5223352,
+   "center": {
+    "lat": 22.558,
+    "lng": 114.2455
+   },
+   "cityRadius": 200,
+   "density": "suburb",
+   "sortOrder": 4
+  },
+  {
+   "id": "baoan",
+   "name": "宝安区",
+   "slogan": "空港新城",
+   "color": 9411240,
+   "center": {
+    "lat": 22.554,
+    "lng": 113.8845
+   },
+   "cityRadius": 420,
+   "density": "urban",
+   "sortOrder": 5
+  },
+  {
+   "id": "longgang",
+   "name": "龙岗区",
+   "slogan": "客家围屋之乡",
+   "color": 14252123,
+   "center": {
+    "lat": 22.648,
+    "lng": 114.1295
+   },
+   "cityRadius": 260,
+   "density": "suburb",
+   "sortOrder": 6
+  },
+  {
+   "id": "longhua",
+   "name": "龙华区",
+   "slogan": "中轴新城",
+   "color": 13738859,
+   "center": {
+    "lat": 22.6125,
+    "lng": 114.0295
+   },
+   "cityRadius": 380,
+   "density": "urban",
+   "sortOrder": 7
+  },
+  {
+   "id": "pingshan",
+   "name": "坪山区",
+   "slogan": "创新东部",
+   "color": 10185681,
+   "center": {
+    "lat": 22.695,
+    "lng": 114.3555
+   },
+   "cityRadius": 200,
+   "density": "suburb",
+   "sortOrder": 8
+  },
+  {
+   "id": "dapeng",
+   "name": "大鹏新区",
+   "slogan": "滨海生态与古城",
+   "color": 6270571,
+   "center": {
+    "lat": 22.59,
+    "lng": 114.479
+   },
+   "cityRadius": 0,
+   "density": "none",
+   "sortOrder": 9
+  }
+ ],
+ "elements": [
+  {
+   "id": "blk-stone",
+   "name": "石砖块",
+   "category": "building",
+   "tags": [
+    "基础"
+   ],
+   "geometry": [
+    {
+     "kind": "box",
+     "params": {
+      "box": {
+       "x0": 0,
+       "y0": 0,
+       "z0": 0,
+       "x1": 8,
+       "y1": 8,
+       "z1": 8
+      }
+     },
+     "color": 10134445,
+     "material": "default"
+    }
+   ]
+  },
+  {
+   "id": "blk-wood",
+   "name": "木板",
+   "category": "building",
+   "tags": [
+    "基础"
+   ],
+   "geometry": [
+    {
+     "kind": "box",
+     "params": {
+      "box": {
+       "x0": 0,
+       "y0": 0,
+       "z0": 0,
+       "x1": 8,
+       "y1": 4,
+       "z1": 8
+      }
+     },
+     "color": 11569504,
+     "material": "default"
+    }
+   ]
+  },
+  {
+   "id": "blk-brick",
+   "name": "红砖",
+   "category": "building",
+   "tags": [
+    "基础"
+   ],
+   "geometry": [
+    {
+     "kind": "box",
+     "params": {
+      "box": {
+       "x0": 0,
+       "y0": 0,
+       "z0": 0,
+       "x1": 8,
+       "y1": 8,
+       "z1": 8
+      }
+     },
+     "color": 12673866,
+     "material": "default"
+    }
+   ]
+  },
+  {
+   "id": "blk-glass",
+   "name": "玻璃块",
+   "category": "building",
+   "tags": [
+    "基础"
+   ],
+   "geometry": [
+    {
+     "kind": "box",
+     "params": {
+      "box": {
+       "x0": 0,
+       "y0": 0,
+       "z0": 0,
+       "x1": 8,
+       "y1": 8,
+       "z1": 8
+      }
+     },
+     "color": 9422824,
+     "material": "glass"
+    }
+   ]
+  },
+  {
+   "id": "blk-light",
+   "name": "发光方块",
+   "category": "decoration",
+   "tags": [
+    "装饰"
+   ],
+   "geometry": [
+    {
+     "kind": "box",
+     "params": {
+      "box": {
+       "x0": 0,
+       "y0": 0,
+       "z0": 0,
+       "x1": 6,
+       "y1": 6,
+       "z1": 6
+      }
+     },
+     "color": 16769162,
+     "material": "default"
+    }
+   ]
+  },
+  {
+   "id": "blk-column",
+   "name": "石柱",
+   "category": "building",
+   "tags": [
+    "结构"
+   ],
+   "geometry": [
+    {
+     "kind": "box",
+     "params": {
+      "box": {
+       "x0": 0,
+       "y0": 0,
+       "z0": 0,
+       "x1": 4,
+       "y1": 24,
+       "z1": 4
+      }
+     },
+     "color": 13159892,
+     "material": "default"
+    }
+   ]
+  },
+  {
+   "id": "blk-roof",
+   "name": "坡屋顶",
+   "category": "building",
+   "tags": [
+    "结构"
+   ],
+   "geometry": [
+    {
+     "kind": "box",
+     "params": {
+      "box": {
+       "x0": 0,
+       "y0": 0,
+       "z0": 0,
+       "x1": 10,
+       "y1": 2,
+       "z1": 10
+      }
+     },
+     "color": 8019014,
+     "material": "default"
+    },
+    {
+     "kind": "box",
+     "params": {
+      "box": {
+       "x0": 0,
+       "y0": 0,
+       "z0": -5,
+       "x1": 10,
+       "y1": 6,
+       "z1": 0.01
+      }
+     },
+     "color": 9070672,
+     "material": "default"
+    }
+   ]
+  },
+  {
+   "id": "blk-tree",
+   "name": "小树",
+   "category": "nature",
+   "tags": [
+    "自然"
+   ],
+   "geometry": [
+    {
+     "kind": "box",
+     "params": {
+      "box": {
+       "x0": 0,
+       "y0": 0,
+       "z0": 0,
+       "x1": 2,
+       "y1": 8,
+       "z1": 2
+      }
+     },
+     "color": 11569504,
+     "material": "default"
+    },
+    {
+     "kind": "box",
+     "params": {
+      "box": {
+       "x0": -4,
+       "y0": 8,
+       "z0": -4,
+       "x1": 10,
+       "y1": 10,
+       "z1": 10
+      }
+     },
+     "color": 5082959,
+     "material": "default"
+    }
+   ]
+  },
+  {
+   "id": "blk-sign",
+   "name": "文字招牌",
+   "category": "decoration",
+   "tags": [
+    "装饰"
+   ],
+   "geometry": [
+    {
+     "kind": "sign",
+     "params": {
+      "text": "深圳你好",
+      "x": 0,
+      "y": 10,
+      "z": 0,
+      "height": 4,
+      "bg": 1192542,
+      "fg": 16769162,
+      "glow": true
+     },
+     "color": 16777215,
+     "material": "default"
+    }
+   ]
+  }
+ ],
+ "landmarks": [
+  {
+   "id": "pingan",
+   "name": "平安金融中心",
+   "district": "futian",
+   "latlng": {
+    "lat": 22.5373,
+    "lng": 114.0556
+   },
+   "interactRadius": 1600,
+   "desc": "平安金融中心高592.5米，是深圳第一高楼、中国第二高楼。塔身八根不锈钢巨柱外露形似钢琴骨架，顶部塔尖如琴键，被称为钢琴塔。登上116层云际观光大厅可俯瞰深圳与香港。",
+   "builder": "pingan-tower",
+   "photoable": true,
+   "tags": [
+    "alias:深圳第一高楼",
+    "grade:S",
+    "rect:30x28"
+   ],
+   "descDetail": "深圳福田CBD核心，与周边写字楼群构成深圳天际线。"
+  },
+  {
+   "id": "civic",
+   "name": "市民中心",
+   "district": "futian",
+   "latlng": {
+    "lat": 22.547,
+    "lng": 114.0585
+   },
+   "interactRadius": 1200,
+   "desc": "市民中心是深圳的行政中枢，标志性的波浪形大屋顶如大鹏展翅，覆盖13.7万平方米，是世界上最大的单一屋顶建筑之一。中轴线上的它北靠莲花山，南向CBD，是深圳城市中轴的核心。",
+   "builder": "civicCenter",
+   "photoable": true,
+   "tags": [
+    "grade:S",
+    "rect:52x26"
+   ]
+  },
+  {
+   "id": "lotushill",
+   "name": "莲花山公园",
+   "district": "futian",
+   "latlng": {
+    "lat": 22.5546,
+    "lng": 114.0545
+   },
+   "interactRadius": 900,
+   "desc": "莲花山公园是福田中心区的城市绿肺，山顶广场矗立着邓小平铜像，是眺望福田CBD天际线的最佳位置。风筝广场的大草坪上常年飘满风筝。",
+   "builder": "lotusHill",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:34x30"
+   ],
+   "descDetail": "登上山顶广场俯瞰市民中心与平安金融中心。"
+  },
+  {
+   "id": "convention",
+   "name": "深圳会展中心",
+   "district": "futian",
+   "latlng": {
+    "lat": 22.5335,
+    "lng": 114.062
+   },
+   "interactRadius": 800,
+   "desc": "深圳会展中心位于福田CBD南侧，是深圳最大的展览场馆，每年高交会（中国国际高新技术成果交易会）在此举办。",
+   "builder": "convention",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:48x22"
+   ]
+  },
+  {
+   "id": "cocopark",
+   "name": "购物公园",
+   "district": "futian",
+   "latlng": {
+    "lat": 22.5345,
+    "lng": 114.0555
+   },
+   "interactRadius": 800,
+   "desc": "购物公园（COCO Park）是中国首家情景式购物中心，露天广场与商圈相连，是福田年轻人最爱的逛街地。",
+   "builder": "cocoPark",
+   "photoable": true,
+   "tags": [
+    "grade:B",
+    "rect:32x24"
+   ]
+  },
+  {
+   "id": "kk100",
+   "name": "京基100",
+   "district": "luohu",
+   "latlng": {
+    "lat": 22.5405,
+    "lng": 114.1055
+   },
+   "interactRadius": 1000,
+   "desc": "京基100高441米，建成时为深圳第一高楼。位于蔡屋围金融中心区，与地王大厦共同构成罗湖天际线。",
+   "builder": "kK100",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:26x24"
+   ]
+  },
+  {
+   "id": "diwang",
+   "name": "地王大厦",
+   "district": "luohu",
+   "latlng": {
+    "lat": 22.5455,
+    "lng": 114.0578
+   },
+   "interactRadius": 800,
+   "desc": "地王大厦（信兴广场）高384米，1996年建成时为亚洲第一高楼。绿色玻璃幕墙双塔造型，深港之窗观光层可同时眺望深圳与香港两座城市。",
+   "builder": "diwang",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:18x20"
+   ]
+  },
+  {
+   "id": "dongmen",
+   "name": "东门老街",
+   "district": "luohu",
+   "latlng": {
+    "lat": 22.5495,
+    "lng": 114.1225
+   },
+   "interactRadius": 700,
+   "desc": "东门老街是深圳商业的原点，300多年的墟市历史让这里成为深圳最具烟火气的地方。如今的东门步行街日均客流量数十万，小吃、服饰、电子市场应有尽有。",
+   "builder": "dongmen",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:30x26"
+   ],
+   "descDetail": "老街骑楼下有各种深圳小吃。"
+  },
+  {
+   "id": "dengportrait",
+   "name": "邓小平画像",
+   "district": "luohu",
+   "latlng": {
+    "lat": 22.5465,
+    "lng": 114.0925
+   },
+   "interactRadius": 800,
+   "desc": "矗立在深南大道与红岭路口的邓小平画像自1992年起历经四个版本，是中国最著名的城市宣传画像，见证了深圳改革开放的历程。",
+   "builder": "dengPortrait",
+   "photoable": true,
+   "tags": [
+    "grade:B",
+    "rect:16x14"
+   ]
+  },
+  {
+   "id": "bull",
+   "name": "拓荒牛雕像",
+   "district": "futian",
+   "latlng": {
+    "lat": 22.5432,
+    "lng": 114.0592
+   },
+   "interactRadius": 800,
+   "desc": "孺子牛（拓荒牛）雕像是深圳的城市象征，青铜铸造的耕牛埋头苦干、奋力向前，象征特区建设者敢闯敢试、艰苦奋斗的精神。",
+   "builder": "bull",
+   "photoable": true,
+   "tags": [
+    "grade:B",
+    "rect:14x12"
+   ]
+  },
+  {
+   "id": "tencent",
+   "name": "腾讯滨海大厦",
+   "district": "nanshan",
+   "latlng": {
+    "lat": 22.5405,
+    "lng": 114.0905
+   },
+   "interactRadius": 800,
+   "desc": "腾讯全球总部滨海大厦由南北两座塔楼和三道空中连廊组成，被称为垂直硅谷，是深圳科技企业的代表建筑。",
+   "builder": "tencent",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:24x18"
+   ]
+  },
+  {
+   "id": "szu",
+   "name": "深圳大学",
+   "district": "nanshan",
+   "latlng": {
+    "lat": 22.5325,
+    "lng": 113.9355
+   },
+   "interactRadius": 800,
+   "desc": "深圳大学1983年建校，校园被荔枝林环绕，涌现出马化腾等一批知名企业家，被称为中国最成功的特区大学。",
+   "builder": "sZU",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:40x30"
+   ]
+  },
+  {
+   "id": "happyvalley",
+   "name": "欢乐谷",
+   "district": "nanshan",
+   "latlng": {
+    "lat": 22.5378,
+    "lng": 113.9845
+   },
+   "interactRadius": 700,
+   "desc": "欢乐谷是深圳老牌主题乐园，木质过山车雪域雄鹰与摩天轮是标志性项目，与旁边的世界之窗、锦绣中华共同构成华侨城旅游度假区。",
+   "builder": "happyValley",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:30x26"
+   ]
+  },
+  {
+   "id": "windowworld",
+   "name": "世界之窗",
+   "district": "nanshan",
+   "latlng": {
+    "lat": 22.535,
+    "lng": 113.9755
+   },
+   "interactRadius": 800,
+   "desc": "世界之窗是深圳最著名的主题公园，把世界奇观按比例微缩于一园。园区入口的108米埃菲尔铁塔是深圳最有辨识度的地标之一。",
+   "builder": "windowWorld",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:26x24"
+   ]
+  },
+  {
+   "id": "talentpark",
+   "name": "人才公园",
+   "district": "nanshan",
+   "latlng": {
+    "lat": 22.5225,
+    "lng": 113.9405
+   },
+   "interactRadius": 800,
+   "desc": "深圳人才公园是全国首个以人才为主题的公园，位于后海湾区，星光桥环湖而建，夜晚灯光璀璨。",
+   "builder": "talentPark",
+   "photoable": true,
+   "tags": [
+    "grade:B",
+    "rect:34x24"
+   ]
+  },
+  {
+   "id": "szbay",
+   "name": "深圳湾·华润春笋",
+   "district": "nanshan",
+   "latlng": {
+    "lat": 22.5225,
+    "lng": 114.0455
+   },
+   "interactRadius": 800,
+   "desc": "深圳湾是深圳最美的滨海休闲带，红树林湿地每年吸引数万只候鸟。湾畔的华润总部春笋高400米，塔身向上层层收分如破土春笋，是深圳后海的地标。",
+   "builder": "shenzhenBay",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:34x46"
+   ],
+   "descDetail": "在海滨栈道散步远眺对岸香港元朗。"
+  },
+  {
+   "id": "mangrove",
+   "name": "福田红树林",
+   "district": "futian",
+   "latlng": {
+    "lat": 22.517,
+    "lng": 113.9955
+   },
+   "interactRadius": 700,
+   "desc": "福田红树林自然保护区是全国唯一处于城市腹地的国家级自然保护区，每年10万只以上候鸟在此停歇，黑脸琵鹭是明星物种。",
+   "builder": "mangrove",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:36x26"
+   ]
+  },
+  {
+   "id": "northstation",
+   "name": "深圳北站",
+   "district": "longhua",
+   "latlng": {
+    "lat": 22.6125,
+    "lng": 114.0295
+   },
+   "interactRadius": 700,
+   "desc": "深圳北站是华南大型高铁枢纽，广深港高铁在此始发，18分钟直达香港西九龙。独特的波浪形屋顶是龙华地标。",
+   "builder": "northStation",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:44x26"
+   ]
+  },
+  {
+   "id": "huaqiangbei",
+   "name": "华强北",
+   "district": "futian",
+   "latlng": {
+    "lat": 22.5475,
+    "lng": 114.0865
+   },
+   "interactRadius": 900,
+   "desc": "华强北被称为中国电子第一街，一米的柜台曾走出50位亿万富翁。赛格广场72层高塔下，是亚洲最密集的电子元器件市场。",
+   "builder": "huaqiangbei",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:34x24"
+   ],
+   "descDetail": "在电子市场淘一部手机，感受深圳速度。"
+  },
+  {
+   "id": "dameisha",
+   "name": "大梅沙海滨",
+   "district": "yantian",
+   "latlng": {
+    "lat": 22.558,
+    "lng": 114.2455
+   },
+   "interactRadius": 800,
+   "desc": "大梅沙是深圳最著名的免费海滨公园，1800米金色沙滩与愿望塔、张拉膜构成盐田最美海岸线。",
+   "builder": "dameisha",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:44x30"
+   ],
+   "descDetail": "夏季人气爆棚，记得防晒。"
+  },
+  {
+   "id": "wutong",
+   "name": "梧桐山",
+   "district": "luohu",
+   "latlng": {
+    "lat": 22.5855,
+    "lng": 114.0975
+   },
+   "interactRadius": 900,
+   "desc": "梧桐山主峰大梧桐海拔943.7米，是深圳第一高峰。好汉坡登山道直达山顶，云海日出是山友们的最爱。",
+   "builder": "wutong",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:40x34"
+   ]
+  },
+  {
+   "id": "gankeng",
+   "name": "甘坑客家小镇",
+   "district": "longgang",
+   "latlng": {
+    "lat": 22.648,
+    "lng": 114.1295
+   },
+   "interactRadius": 700,
+   "desc": "甘坑客家小镇起源于350多年前的客家村落，炮楼与排屋保存完好，如今是集客家文化、非遗体验于一体的特色小镇。",
+   "builder": "gankeng",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:32x26"
+   ]
+  },
+  {
+   "id": "dawan",
+   "name": "大万世居",
+   "district": "pingshan",
+   "latlng": {
+    "lat": 22.695,
+    "lng": 114.3555
+   },
+   "interactRadius": 700,
+   "desc": "大万世居建于1791年，是曾氏家族的堡垒式客家围龙屋，占地2.5万平方米，是全国保存最完好的客家围屋之一。",
+   "builder": "dawan",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:36x28"
+   ]
+  },
+  {
+   "id": "dapeng",
+   "name": "大鹏所城",
+   "district": "dapeng",
+   "latlng": {
+    "lat": 22.598,
+    "lng": 114.478
+   },
+   "interactRadius": 800,
+   "desc": "大鹏所城始建于明洪武二十七年（1394年），是明清两代南海海防军事要塞，深圳鹏城之名即源于此。城内保存有赖恩爵振威将军第等十余座清代府第。",
+   "builder": "dapeng",
+   "photoable": true,
+   "tags": [
+    "grade:A",
+    "rect:24x22"
+   ]
+  },
+  {
+   "id": "jiaochangwei",
+   "name": "较场尾",
+   "district": "dapeng",
+   "latlng": {
+    "lat": 22.5605,
+    "lng": 114.4805
+   },
+   "interactRadius": 800,
+   "desc": "较场尾是深圳唯一有海岸线的村庄，300多家彩色民宿沿海滩排开，被称为深圳的鼓浪屿。",
+   "builder": "jiaochangwei",
+   "photoable": true,
+   "tags": [
+    "grade:B",
+    "rect:30x24"
+   ]
+  }
+ ],
+ "quests": [
+  {
+   "id": "q_futian",
+   "title": "福田·城市中轴",
+   "desc": "拍摄平安金融中心、市民中心、莲花山、会展中心、华强北",
+   "cond": {
+    "type": "interact",
+    "target": "photoSet:photoSet,pingan,civic,lotushill,convention,huaqiangbei,bull,dengportrait,cocopark,mangrove"
+   },
+   "reward": {
+    "money": 200,
+    "items": [
+     {
+      "id": "s_futian",
+      "n": 1
+     }
+    ]
+   },
+   "cycle": "once"
+  },
+  {
+   "id": "q_luohu",
+   "title": "罗湖·老城记忆",
+   "desc": "拍摄京基100、地王大厦、东门老街、邓小平画像",
+   "cond": {
+    "type": "interact",
+    "target": "photoSet:photoSet,kk100,diwang,dongmen,dengportrait,wutong"
+   },
+   "reward": {
+    "money": 200,
+    "items": [
+     {
+      "id": "s_luohu",
+      "n": 1
+     }
+    ]
+   },
+   "cycle": "once"
+  },
+  {
+   "id": "q_nanshan",
+   "title": "南山·科技湾区",
+   "desc": "拍摄世界之窗、欢乐谷、腾讯滨海大厦、深圳湾春笋",
+   "cond": {
+    "type": "interact",
+    "target": "photoSet:photoSet,windowworld,happyvalley,tencent,szbay,szu,talentpark"
+   },
+   "reward": {
+    "money": 200,
+    "items": [
+     {
+      "id": "s_nanshan",
+      "n": 1
+     }
+    ]
+   },
+   "cycle": "once"
+  },
+  {
+   "id": "q_yantian",
+   "title": "盐田·山海港城",
+   "desc": "在大梅沙海滨看海，并乘坐一次深圳湾游船",
+   "cond": {
+    "type": "interact",
+    "target": "photoSet:multi,photo,dameisha,cruise"
+   },
+   "reward": {
+    "money": 250,
+    "items": [
+     {
+      "id": "s_yantian",
+      "n": 1
+     }
+    ]
+   },
+   "cycle": "once"
+  },
+  {
+   "id": "q_longgang",
+   "title": "龙岗·客家围屋",
+   "desc": "前往甘坑客家小镇，用相机记录客家文化",
+   "cond": {
+    "type": "interact",
+    "target": "photoSet:photoSet,gankeng"
+   },
+   "reward": {
+    "money": 200,
+    "items": [
+     {
+      "id": "s_longgang",
+      "n": 1
+     }
+    ]
+   },
+   "cycle": "once"
+  },
+  {
+   "id": "q_dapeng",
+   "title": "大鹏·古城海岸",
+   "desc": "游览大鹏所城与较场尾民宿小镇",
+   "cond": {
+    "type": "interact",
+    "target": "photoSet:discoverSet,dapeng,jiaochangwei"
+   },
+   "reward": {
+    "money": 200,
+    "items": [
+     {
+      "id": "s_dapeng",
+      "n": 1
+     }
+    ]
+   },
+   "cycle": "once"
+  },
+  {
+   "id": "q_food",
+   "title": "食在深圳",
+   "desc": "品尝6种不同的深圳美食",
+   "cond": {
+    "type": "interact",
+    "target": "photoSet:foodCount"
+   },
+   "reward": {
+    "money": 150,
+    "items": [
+     {
+      "id": "s_foodie",
+      "n": 1
+     }
+    ]
+   },
+   "cycle": "once"
+  },
+  {
+   "id": "q_culture",
+   "title": "特区文化达人",
+   "desc": "解锁6项特区文化图鉴",
+   "cond": {
+    "type": "interact",
+    "target": "photoSet:cultureCount"
+   },
+   "reward": {
+    "money": 150,
+    "items": [
+     {
+      "id": "s_culture",
+      "n": 1
+     }
+    ]
+   },
+   "cycle": "once"
+  },
+  {
+   "id": "d_photo3",
+   "title": "今天拍摄3个建筑",
+   "desc": "",
+   "cond": {
+    "type": "collect",
+    "item": "daily:dailyPhotos",
+    "n": 3
+   },
+   "reward": {
+    "money": 60
+   },
+   "cycle": "daily"
+  },
+  {
+   "id": "d_npc5",
+   "title": "找到5个NPC聊天",
+   "desc": "",
+   "cond": {
+    "type": "collect",
+    "item": "daily:dailyTalk",
+    "n": 5
+   },
+   "reward": {
+    "money": 50
+   },
+   "cycle": "daily"
+  },
+  {
+   "id": "d_district",
+   "title": "探索一个新区",
+   "desc": "",
+   "cond": {
+    "type": "collect",
+    "item": "daily:dailyDistricts",
+    "n": 2
+   },
+   "reward": {
+    "money": 60
+   },
+   "cycle": "daily"
+  },
+  {
+   "id": "d_bus",
+   "title": "乘坐一次观光巴士",
+   "desc": "",
+   "cond": {
+    "type": "collect",
+    "item": "daily:bus",
+    "n": 1
+   },
+   "reward": {
+    "money": 40
+   },
+   "cycle": "daily"
+  },
+  {
+   "id": "d_metro",
+   "title": "乘坐一次地铁",
+   "desc": "",
+   "cond": {
+    "type": "collect",
+    "item": "daily:metro",
+    "n": 1
+   },
+   "reward": {
+    "money": 40
+   },
+   "cycle": "daily"
+  },
+  {
+   "id": "d_food2",
+   "title": "品尝2种美食",
+   "desc": "",
+   "cond": {
+    "type": "collect",
+    "item": "daily:food",
+    "n": 2
+   },
+   "reward": {
+    "money": 50
+   },
+   "cycle": "daily"
+  },
+  {
+   "id": "d_night",
+   "title": "夜晚拍摄一张照片",
+   "desc": "",
+   "cond": {
+    "type": "collect",
+    "item": "daily:nightPhoto",
+    "n": 1
+   },
+   "reward": {
+    "money": 50
+   },
+   "cycle": "daily"
+  },
+  {
+   "id": "d_walk",
+   "title": "步行1000米",
+   "desc": "",
+   "cond": {
+    "type": "collect",
+    "item": "daily:walk",
+    "n": 1
+   },
+   "reward": {
+    "money": 40
+   },
+   "cycle": "daily"
+  },
+  {
+   "id": "d_culture",
+   "title": "体验一项岭南文化",
+   "desc": "",
+   "cond": {
+    "type": "collect",
+    "item": "daily:culture",
+    "n": 1
+   },
+   "reward": {
+    "money": 50
+   },
+   "cycle": "daily"
+  },
+  {
+   "id": "d_selfie",
+   "title": "拍一张自拍",
+   "desc": "",
+   "cond": {
+    "type": "collect",
+    "item": "daily:selfie",
+    "n": 1
+   },
+   "reward": {
+    "money": 30
+   },
+   "cycle": "daily"
+  }
+ ],
+ "npcs": [
+  {
+   "id": "guide-pingan",
+   "name": "摄影师阿鹏",
+   "landmark": "pingan",
+   "dialogue": [
+    {
+     "id": "greet",
+     "text": "欢迎来到方块鹏城！我是摄影师阿鹏。举起相机（C 键），把这座城市的美拍进你的图鉴吧。",
+     "choices": [
+      {
+       "text": "拍照能赚多少钱？",
+       "next": "money"
+      },
+      {
+       "text": "这里有什么好拍的？",
+       "next": "spots"
+      }
+     ]
+    },
+    {
+     "id": "money",
+     "text": "首次拍摄一个地标 +¥50，重复拍摄 +¥5。拍满 25 个地标还能解锁「湾区行者」飞升阶段！",
+     "choices": [
+      {
+       "text": "明白了，谢谢！"
+      }
+     ]
+    },
+    {
+     "id": "spots",
+     "text": "平安金融中心是深圳第一高楼；莲花山顶能拍市民中心全景；大梅沙的日落千万别错过。",
+     "choices": [
+      {
+       "text": "谢谢指点！"
+      }
+     ]
+    }
+   ],
+   "enabled": true
+  },
+  {
+   "id": "guide-civic",
+   "name": "义工姐姐",
+   "landmark": "civic",
+   "dialogue": [
+    {
+     "id": "greet",
+     "text": "你好呀！需要帮助吗？深圳是一座志愿者之城，我就是千万\"红马甲\"之一。",
+     "choices": [
+      {
+       "text": "怎么快速去别的区？",
+       "next": "metro"
+      },
+      {
+       "text": "没什么，路过打个招呼",
+       "next": "bye"
+      }
+     ]
+    },
+    {
+     "id": "metro",
+     "text": "地铁站里按 E 键就能乘车，跨区一瞬间就到。攒够能量后还能解锁传送（T 键）更快！",
+     "choices": [
+      {
+       "text": "太方便了，谢谢！"
+      }
+     ]
+    },
+    {
+     "id": "bye",
+     "text": "祝你玩得开心！对了对了，东门老街的小吃街值得一逛。",
+     "choices": [
+      {
+       "text": "好的，回见！"
+      }
+     ]
+    }
+   ],
+   "enabled": true
+  },
+  {
+   "id": "merchant-dongmen",
+   "name": "小摊老板陈叔",
+   "landmark": "dongmen",
+   "dialogue": [
+    {
+     "id": "greet",
+     "text": "靓仔来啦！尝尝陈叔的手打柠檬茶？刚从东门进的货。",
+     "choices": [
+      {
+       "text": "来一杯！（免费的吗？）",
+       "next": "free",
+       "give": {
+        "money": 20
+       }
+      },
+      {
+       "text": "下次吧，赶时间",
+       "next": "bye"
+      }
+     ]
+    },
+    {
+     "id": "free",
+     "text": "第一次见面算我请客！这 ¥20 拿着，去隔壁老街买些吃的。常来啊！",
+     "choices": [
+      {
+       "text": "谢谢陈叔！"
+      }
+     ]
+    },
+    {
+     "id": "bye",
+     "text": "行嘞，路过别忘了我这口甜！",
+     "choices": [
+      {
+       "text": "一定！"
+      }
+     ]
+    }
+   ],
+   "enabled": true
+  },
+  {
+   "id": "guide-seaworld",
+   "name": "设计师小湾",
+   "landmark": "szbay",
+   "dialogue": [
+    {
+     "id": "greet",
+     "text": "嘿，你也是来看春笋的吗？我是建筑设计师小湾，深圳湾天际线就是我的灵感来源。",
+     "choices": [
+      {
+       "text": "深圳为什么有这么多高楼？",
+       "next": "tall"
+      },
+      {
+       "text": "你是怎么成为设计师的？",
+       "next": "story"
+      }
+     ]
+    },
+    {
+     "id": "tall",
+     "text": "深圳从边陲小镇到国际都市只用了四十年，每一栋楼都是向上生长的梦想。拍下它们吧！",
+     "choices": [
+      {
+       "text": "受教了！"
+      }
+     ]
+    },
+    {
+     "id": "story",
+     "text": "小时候在莲花山看市民中心，就觉得\"哇，这就是未来\"。现在我把未来画在图纸上。",
+     "choices": [
+      {
+       "text": "很浪漫的故事",
+       "next": "g2"
+      }
+     ]
+    },
+    {
+     "id": "g2",
+     "text": "对了，解锁「城市建造者」阶段后你也能亲手搭建自己的建筑（B 键）！",
+     "choices": [
+      {
+       "text": "好期待！"
+      }
+     ]
+    }
+   ],
+   "enabled": true
+  },
+  {
+   "id": "guide-dameisha",
+   "name": "冲浪少年阿浪",
+   "landmark": "dameisha",
+   "dialogue": [
+    {
+     "id": "greet",
+     "text": "哟！海边来的？今天的浪不错。我叫阿浪，大梅沙土著，浪龄十年。",
+     "choices": [
+      {
+       "text": "海边有什么好玩的？",
+       "next": "fun"
+      },
+      {
+       "text": "你晒得好黑",
+       "next": "tan"
+      }
+     ]
+    },
+    {
+     "id": "fun",
+     "text": "冲浪、看日落、吃窑鸡！要是乘游船出海，还能从海上拍深圳最美的天际线。",
+     "choices": [
+      {
+       "text": "听心动了！"
+      }
+     ]
+    },
+    {
+     "id": "tan",
+     "text": "哈哈这是勋章！盐田的太阳最实在，晒一小时顶市区一天。",
+     "choices": [
+      {
+       "text": "哈哈，保重皮肤！"
+      }
+     ]
+    }
+   ],
+   "enabled": true
+  },
+  {
+   "id": "elder-dapeng",
+   "name": "所城老伯",
+   "landmark": "dapeng",
+   "dialogue": [
+    {
+     "id": "greet",
+     "text": "后生仔，你脚踩的可是明朝的抗倭古城。大鹏所城，六百年了。",
+     "choices": [
+      {
+       "text": "这里有什么历史？",
+       "next": "hist"
+      },
+      {
+       "text": "老伯您多大年纪了？",
+       "next": "age"
+      }
+     ]
+    },
+    {
+     "id": "hist",
+     "text": "赖恩爵将军就在这儿打的九龙海战，深圳的故事不只四十年，是六百年！",
+     "choices": [
+      {
+       "text": "肃然起敬",
+       "next": "g2"
+      }
+     ]
+    },
+    {
+     "id": "age",
+     "text": "哈哈哈，比你爷爷还大些。来，压岁钱拿去，添个彩头。",
+     "choices": [
+      {
+       "text": "谢谢老伯！",
+       "next": "g2",
+       "give": {
+        "money": 50
+       }
+      }
+     ]
+    },
+    {
+     "id": "g2",
+     "text": "城里的将军府、粮仓都值得一逛。走累了吧？传送点就在附近。",
+     "choices": [
+      {
+       "text": "谢谢您嘞！"
+      }
+     ]
+    }
+   ],
+   "enabled": true
+  }
+ ],
+ "traffic": {
+  "stations": [
+   {
+    "id": "m-szsnzx",
+    "name": "市民中心站",
+    "latlng": {
+     "lat": 22.547,
+     "lng": 114.0585
+    },
+    "transfers": [
+     "line-2",
+     "line-4"
+    ]
+   },
+   {
+    "id": "m-hztyc",
+    "name": "会展中心站",
+    "latlng": {
+     "lat": 22.5335,
+     "lng": 114.062
+    },
+    "transfers": [
+     "line-1",
+     "line-4"
+    ]
+   },
+   {
+    "id": "m-gmdx",
+    "name": "购物公园站",
+    "latlng": {
+     "lat": 22.5345,
+     "lng": 114.0555
+    },
+    "transfers": [
+     "line-1",
+     "line-3"
+    ]
+   },
+   {
+    "id": "m-cgc",
+    "name": "车公庙站",
+    "latlng": {
+     "lat": 22.543,
+     "lng": 114.03
+    },
+    "transfers": [
+     "line-1",
+     "line-7",
+     "line-9",
+     "line-11"
+    ]
+   },
+   {
+    "id": "m-dy",
+    "name": "大剧院站",
+    "latlng": {
+     "lat": 22.5485,
+     "lng": 114.085
+    },
+    "transfers": [
+     "line-1",
+     "line-2"
+    ]
+   },
+   {
+    "id": "m-lc",
+    "name": "老街站",
+    "latlng": {
+     "lat": 22.532,
+     "lng": 114.1215
+    },
+    "transfers": [
+     "line-1",
+     "line-3"
+    ]
+   },
+   {
+    "id": "m-gm",
+    "name": "国贸站",
+    "latlng": {
+     "lat": 22.5315,
+     "lng": 114.1215
+    },
+    "transfers": [
+     "line-1"
+    ]
+   },
+   {
+    "id": "m-sjsn",
+    "name": "世界之窗站",
+    "latlng": {
+     "lat": 22.535,
+     "lng": 113.9755
+    },
+    "transfers": [
+     "line-1",
+     "line-2"
+    ]
+   },
+   {
+    "id": "m-hqc",
+    "name": "华侨城站",
+    "latlng": {
+     "lat": 22.5405,
+     "lng": 114.0125
+    },
+    "transfers": [
+     "line-1"
+    ]
+   },
+   {
+    "id": "m-kb",
+    "name": "科苑站",
+    "latlng": {
+     "lat": 22.539,
+     "lng": 113.9455
+    },
+    "transfers": [
+     "line-2"
+    ]
+   },
+   {
+    "id": "m-hzw",
+    "name": "后海站",
+    "latlng": {
+     "lat": 22.5235,
+     "lng": 113.9365
+    },
+    "transfers": [
+     "line-2",
+     "line-11"
+    ]
+   },
+   {
+    "id": "m-szwn",
+    "name": "深圳湾公园站",
+    "latlng": {
+     "lat": 22.517,
+     "lng": 113.9855
+    },
+    "transfers": [
+     "line-9"
+    ]
+   },
+   {
+    "id": "m-cyz",
+    "name": "赤湾站",
+    "latlng": {
+     "lat": 22.5135,
+     "lng": 113.9005
+    },
+    "transfers": [
+     "line-2",
+     "line-5"
+    ]
+   },
+   {
+    "id": "m-yt",
+    "name": "盐田路站",
+    "latlng": {
+     "lat": 22.558,
+     "lng": 114.2455
+    },
+    "transfers": [
+     "line-8"
+    ]
+   },
+   {
+    "id": "m-lhy",
+    "name": "莲花村站",
+    "latlng": {
+     "lat": 22.547,
+     "lng": 114.0985
+    },
+    "transfers": [
+     "line-3",
+     "line-10"
+    ]
+   },
+   {
+    "id": "m-bl",
+    "name": "布吉站",
+    "latlng": {
+     "lat": 22.594,
+     "lng": 114.117
+    },
+    "transfers": [
+     "line-3",
+     "line-5"
+    ]
+   },
+   {
+    "id": "m-lgc",
+    "name": "龙城广场站",
+    "latlng": {
+     "lat": 22.72,
+     "lng": 114.2465
+    },
+    "transfers": [
+     "line-3"
+    ]
+   },
+   {
+    "id": "m-ba",
+    "name": "宝安中心站",
+    "latlng": {
+     "lat": 22.554,
+     "lng": 113.8845
+    },
+    "transfers": [
+     "line-1",
+     "line-5",
+     "line-11"
+    ]
+   },
+   {
+    "id": "m-hgka",
+    "name": "皇岗口岸站",
+    "latlng": {
+     "lat": 22.5225,
+     "lng": 114.0755
+    },
+    "transfers": [
+     "line-7"
+    ]
+   },
+   {
+    "id": "m-tai",
+    "name": "太安站",
+    "latlng": {
+     "lat": 22.5505,
+     "lng": 114.1265
+    },
+    "transfers": [
+     "line-7"
+    ]
+   },
+   {
+    "id": "m-stj",
+    "name": "沙头角站",
+    "latlng": {
+     "lat": 22.5565,
+     "lng": 114.2345
+    },
+    "transfers": [
+     "line-8"
+    ]
+   },
+   {
+    "id": "m-xms",
+    "name": "小梅沙站",
+    "latlng": {
+     "lat": 22.5955,
+     "lng": 114.2655
+    },
+    "transfers": [
+     "line-8"
+    ]
+   },
+   {
+    "id": "m-ftka",
+    "name": "福田口岸站",
+    "latlng": {
+     "lat": 22.5145,
+     "lng": 114.0905
+    },
+    "transfers": [
+     "line-10"
+    ]
+   },
+   {
+    "id": "m-bell",
+    "name": "贝尔路站",
+    "latlng": {
+     "lat": 22.6455,
+     "lng": 114.1265
+    },
+    "transfers": [
+     "line-10"
+    ]
+   },
+   {
+    "id": "bus-sjsw",
+    "name": "世界之窗",
+    "latlng": {
+     "lat": 22.535,
+     "lng": 113.9755
+    }
+   },
+   {
+    "id": "bus-hqc",
+    "name": "华侨城",
+    "latlng": {
+     "lat": 22.5405,
+     "lng": 114.0125
+    }
+   },
+   {
+    "id": "bus-cgc",
+    "name": "车公庙",
+    "latlng": {
+     "lat": 22.543,
+     "lng": 114.03
+    }
+   },
+   {
+    "id": "bus-smzx",
+    "name": "市民中心",
+    "latlng": {
+     "lat": 22.547,
+     "lng": 114.0585
+    }
+   },
+   {
+    "id": "bus-djy",
+    "name": "大剧院",
+    "latlng": {
+     "lat": 22.5485,
+     "lng": 114.085
+    }
+   },
+   {
+    "id": "bus-gm",
+    "name": "国贸",
+    "latlng": {
+     "lat": 22.532,
+     "lng": 114.1215
+    }
+   },
+   {
+    "id": "pier-shekou",
+    "name": "蛇口码头",
+    "latlng": {
+     "lat": 22.5145,
+     "lng": 113.9105
+    }
+   },
+   {
+    "id": "pier-szwh",
+    "name": "深圳湾口岸码头",
+    "latlng": {
+     "lat": 22.5145,
+     "lng": 113.9655
+    }
+   },
+   {
+    "id": "cable-south",
+    "name": "梧桐山南门站",
+    "latlng": {
+     "lat": 22.5855,
+     "lng": 114.0975
+    }
+   },
+   {
+    "id": "cable-peak",
+    "name": "好汉坡站",
+    "latlng": {
+     "lat": 22.5885,
+     "lng": 114.098
+    }
+   }
+  ],
+  "routes": [
+   {
+    "id": "line-2",
+    "name": "地铁2号线",
+    "kind": "metro",
+    "color": 14966803,
+    "stations": [
+     "m-dy",
+     "m-szsnzx",
+     "m-sjsn",
+     "m-kb",
+     "m-hzw",
+     "m-cyz"
+    ],
+    "interval": 0.2,
+    "fare": 3
+   },
+   {
+    "id": "line-4",
+    "name": "地铁4号线",
+    "kind": "metro",
+    "color": 9950976,
+    "stations": [
+     "m-szsnzx",
+     "m-hztyc"
+    ],
+    "interval": 0.2,
+    "fare": 3
+   },
+   {
+    "id": "line-1",
+    "name": "地铁1号线",
+    "kind": "metro",
+    "color": 45376,
+    "stations": [
+     "m-gm",
+     "m-lc",
+     "m-dy",
+     "m-hztyc",
+     "m-gmdx",
+     "m-cgc",
+     "m-hqc",
+     "m-sjsn",
+     "m-ba"
+    ],
+    "interval": 0.2,
+    "fare": 3
+   },
+   {
+    "id": "line-3",
+    "name": "地铁3号线",
+    "kind": "metro",
+    "color": 29390,
+    "stations": [
+     "m-gmdx",
+     "m-lhy",
+     "m-lc",
+     "m-bl",
+     "m-lgc"
+    ],
+    "interval": 0.2,
+    "fare": 3
+   },
+   {
+    "id": "line-7",
+    "name": "地铁7号线",
+    "kind": "metro",
+    "color": 34173,
+    "stations": [
+     "m-cgc",
+     "m-hgka",
+     "m-tai"
+    ],
+    "interval": 0.2,
+    "fare": 3
+   },
+   {
+    "id": "line-9",
+    "name": "地铁9号线",
+    "kind": "metro",
+    "color": 10081744,
+    "stations": [
+     "m-cgc",
+     "m-szwn"
+    ],
+    "interval": 0.2,
+    "fare": 3
+   },
+   {
+    "id": "line-11",
+    "name": "地铁11号线",
+    "kind": "metro",
+    "color": 7039851,
+    "stations": [
+     "m-cgc",
+     "m-hzw",
+     "m-ba"
+    ],
+    "interval": 0.2,
+    "fare": 3
+   },
+   {
+    "id": "line-5",
+    "name": "地铁5号线",
+    "kind": "metro",
+    "color": 10898297,
+    "stations": [
+     "m-bl",
+     "m-ba",
+     "m-cyz"
+    ],
+    "interval": 0.2,
+    "fare": 3
+   },
+   {
+    "id": "line-8",
+    "name": "地铁8号线",
+    "kind": "metro",
+    "color": 34173,
+    "stations": [
+     "m-stj",
+     "m-yt",
+     "m-xms"
+    ],
+    "interval": 0.2,
+    "fare": 3
+   },
+   {
+    "id": "line-10",
+    "name": "地铁10号线",
+    "kind": "metro",
+    "color": 16749105,
+    "stations": [
+     "m-ftka",
+     "m-lhy",
+     "m-bell"
+    ],
+    "interval": 0.2,
+    "fare": 3
+   },
+   {
+    "id": "bus-sightseeing",
+    "name": "城市观光巴士（深南路线）",
+    "kind": "bus",
+    "color": 14966803,
+    "stations": [
+     "bus-sjsw",
+     "bus-hqc",
+     "bus-cgc",
+     "bus-smzx",
+     "bus-djy",
+     "bus-gm"
+    ],
+    "interval": 0.5,
+    "fare": 10
+   },
+   {
+    "id": "cruise-szbay",
+    "name": "深圳湾游船",
+    "kind": "boat",
+    "color": 2079144,
+    "stations": [
+     "pier-shekou",
+     "pier-szwh"
+    ],
+    "interval": 1,
+    "fare": 60
+   },
+   {
+    "id": "cable-wutong",
+    "name": "梧桐山索道",
+    "kind": "cable",
+    "color": 9950976,
+    "stations": [
+     "cable-south",
+     "cable-peak"
+    ],
+    "interval": 0.15,
+    "fare": 25
+   }
+  ]
+ },
+ "spawnPoints": [
+  {
+   "id": "pingan",
+   "name": "平安金融中心",
+   "district": "futian",
+   "blurb": "CBD天际线",
+   "latlng": {
+    "lat": 22.5373,
+    "lng": 114.0556
+   },
+   "facing": 0
+  },
+  {
+   "id": "civic",
+   "name": "市民中心",
+   "district": "futian",
+   "blurb": "大鹏展翅",
+   "latlng": {
+    "lat": 22.547,
+    "lng": 114.0585
+   },
+   "facing": 3.141592653589793
+  },
+  {
+   "id": "lotushill",
+   "name": "莲花山公园",
+   "district": "futian",
+   "blurb": "山顶铜像俯瞰CBD",
+   "latlng": {
+    "lat": 22.5546,
+    "lng": 114.0545
+   },
+   "facing": 0
+  },
+  {
+   "id": "dongmen",
+   "name": "东门老街",
+   "district": "luohu",
+   "blurb": "深圳商业原点",
+   "latlng": {
+    "lat": 22.5495,
+    "lng": 114.1225
+   },
+   "facing": 0
+  },
+  {
+   "id": "diwang",
+   "name": "地王大厦",
+   "district": "luohu",
+   "blurb": "深港之窗",
+   "latlng": {
+    "lat": 22.5455,
+    "lng": 114.0578
+   },
+   "facing": 1.5707963267948966
+  },
+  {
+   "id": "huaqiangbei",
+   "name": "华强北",
+   "district": "futian",
+   "blurb": "中国电子第一街",
+   "latlng": {
+    "lat": 22.5475,
+    "lng": 114.0865
+   },
+   "facing": 0
+  },
+  {
+   "id": "windowworld",
+   "name": "世界之窗",
+   "district": "nanshan",
+   "blurb": "环游世界",
+   "latlng": {
+    "lat": 22.535,
+    "lng": 113.9755
+   },
+   "facing": 0
+  },
+  {
+   "id": "szbay",
+   "name": "深圳湾·春笋",
+   "district": "nanshan",
+   "blurb": "滨海休闲带",
+   "latlng": {
+    "lat": 22.5225,
+    "lng": 114.0455
+   },
+   "facing": 0
+  },
+  {
+   "id": "dameisha",
+   "name": "大梅沙",
+   "district": "yantian",
+   "blurb": "阳光沙滩",
+   "latlng": {
+    "lat": 22.558,
+    "lng": 114.2455
+   },
+   "facing": 0
+  },
+  {
+   "id": "dapeng",
+   "name": "大鹏所城",
+   "district": "dapeng",
+   "blurb": "明代海防古城",
+   "latlng": {
+    "lat": 22.598,
+    "lng": 114.478
+   },
+   "facing": 0
+  }
+ ],
+ "teleportPoints": [
+  {
+   "id": "tp-pingan",
+   "name": "平安金融中心",
+   "latlng": {
+    "lat": 22.5373,
+    "lng": 114.0556
+   },
+   "unlock": {
+    "type": "visited",
+    "landmark": "pingan"
+   },
+   "cooldownSec": 30,
+   "cost": 10
+  },
+  {
+   "id": "tp-civic",
+   "name": "市民中心",
+   "latlng": {
+    "lat": 22.547,
+    "lng": 114.0585
+   },
+   "unlock": {
+    "type": "visited",
+    "landmark": "civic"
+   },
+   "cooldownSec": 30,
+   "cost": 10
+  },
+  {
+   "id": "tp-lotushill",
+   "name": "莲花山公园",
+   "latlng": {
+    "lat": 22.5546,
+    "lng": 114.0545
+   },
+   "unlock": {
+    "type": "visited",
+    "landmark": "lotushill"
+   },
+   "cooldownSec": 30,
+   "cost": 10
+  },
+  {
+   "id": "tp-kk100",
+   "name": "京基100",
+   "latlng": {
+    "lat": 22.5405,
+    "lng": 114.1055
+   },
+   "unlock": {
+    "type": "visited",
+    "landmark": "kk100"
+   },
+   "cooldownSec": 30,
+   "cost": 10
+  },
+  {
+   "id": "tp-dongmen",
+   "name": "东门老街",
+   "latlng": {
+    "lat": 22.5495,
+    "lng": 114.1225
+   },
+   "unlock": {
+    "type": "visited",
+    "landmark": "dongmen"
+   },
+   "cooldownSec": 30,
+   "cost": 10
+  },
+  {
+   "id": "tp-windowworld",
+   "name": "世界之窗",
+   "latlng": {
+    "lat": 22.535,
+    "lng": 113.9755
+   },
+   "unlock": {
+    "type": "visited",
+    "landmark": "windowworld"
+   },
+   "cooldownSec": 30,
+   "cost": 10
+  },
+  {
+   "id": "tp-szbay",
+   "name": "深圳湾·华润春笋",
+   "latlng": {
+    "lat": 22.5225,
+    "lng": 114.0455
+   },
+   "unlock": {
+    "type": "visited",
+    "landmark": "szbay"
+   },
+   "cooldownSec": 30,
+   "cost": 10
+  },
+  {
+   "id": "tp-northstation",
+   "name": "深圳北站",
+   "latlng": {
+    "lat": 22.6125,
+    "lng": 114.0295
+   },
+   "unlock": {
+    "type": "visited",
+    "landmark": "northstation"
+   },
+   "cooldownSec": 30,
+   "cost": 10
+  },
+  {
+   "id": "tp-dameisha",
+   "name": "大梅沙海滨",
+   "latlng": {
+    "lat": 22.558,
+    "lng": 114.2455
+   },
+   "unlock": {
+    "type": "visited",
+    "landmark": "dameisha"
+   },
+   "cooldownSec": 30,
+   "cost": 10
+  },
+  {
+   "id": "tp-dapeng",
+   "name": "大鹏所城",
+   "latlng": {
+    "lat": 22.598,
+    "lng": 114.478
+   },
+   "unlock": {
+    "type": "visited",
+    "landmark": "dapeng"
+   },
+   "cooldownSec": 30,
+   "cost": 10
+  }
+ ],
+ "buildRecipes": [
+  {
+   "id": "recipe-stone",
+   "name": "石砖块",
+   "element": "blk-stone",
+   "cost": {
+    "money": 2,
+    "items": []
+   },
+   "requires": [],
+   "enabled": true
+  },
+  {
+   "id": "recipe-wood",
+   "name": "木板",
+   "element": "blk-wood",
+   "cost": {
+    "money": 2,
+    "items": []
+   },
+   "requires": [],
+   "enabled": true
+  },
+  {
+   "id": "recipe-brick",
+   "name": "红砖",
+   "element": "blk-brick",
+   "cost": {
+    "money": 2,
+    "items": []
+   },
+   "requires": [],
+   "enabled": true
+  },
+  {
+   "id": "recipe-glass",
+   "name": "玻璃块",
+   "element": "blk-glass",
+   "cost": {
+    "money": 4,
+    "items": []
+   },
+   "requires": [],
+   "enabled": true
+  },
+  {
+   "id": "recipe-light",
+   "name": "发光方块",
+   "element": "blk-light",
+   "cost": {
+    "money": 5,
+    "items": []
+   },
+   "requires": [],
+   "enabled": true
+  },
+  {
+   "id": "recipe-column",
+   "name": "石柱",
+   "element": "blk-column",
+   "cost": {
+    "money": 6,
+    "items": []
+   },
+   "requires": [],
+   "enabled": true
+  },
+  {
+   "id": "recipe-roof",
+   "name": "坡屋顶",
+   "element": "blk-roof",
+   "cost": {
+    "money": 8,
+    "items": []
+   },
+   "requires": [],
+   "enabled": true
+  },
+  {
+   "id": "recipe-tree",
+   "name": "小树",
+   "element": "blk-tree",
+   "cost": {
+    "money": 6,
+    "items": []
+   },
+   "requires": [],
+   "enabled": true
+  },
+  {
+   "id": "recipe-sign",
+   "name": "文字招牌",
+   "element": "blk-sign",
+   "cost": {
+    "money": 10,
+    "items": []
+   },
+   "requires": [],
+   "enabled": true
+  }
+ ],
+ "ascension": {
+  "stages": [
+   {
+    "id": "newcomer",
+    "name": "鹏城新客",
+    "points": 0,
+    "unlocks": []
+   },
+   {
+    "id": "explorer",
+    "name": "湾区行者",
+    "points": 100,
+    "unlocks": [
+     "teleport"
+    ],
+    "requires": [
+     "newcomer"
+    ]
+   },
+   {
+    "id": "builder",
+    "name": "城市建造者",
+    "points": 300,
+    "unlocks": [
+     "build",
+     "fly"
+    ],
+    "requires": [
+     "explorer"
+    ]
+   }
+  ]
+ }
+}
