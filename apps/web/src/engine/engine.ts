@@ -14,11 +14,15 @@ import { TransitSystem, type RideResult } from './transit';
 import { BuildMode } from './build';
 import { TeleportSystem } from './teleport';
 import { NpcSystem } from './npc';
+import { DayNightSystem } from './daynight';
+import { WeatherSystem } from './weather';
 import { AscensionSystem } from '../domain/ascension';
 import { Tutorial, isNewPlayer } from './tutorial';
 import { TouchControls } from './touch';
 import { ShopPanel } from './shop';
 import { GalleryPanel } from './gallery';
+import { SouvenirPanel } from './souvenir';
+import { LABEL_HEIGHT } from './builders';
 import { ensureSession, uploadSave, downloadSave, type CloudSession } from '../services/cloud';
 import { Analytics } from '../services/analytics';
 import { snapshotToSave, saveToInit } from '../services/saveCodec';
@@ -54,6 +58,13 @@ export class GameEngine {
   analytics: Analytics | null = null;
   shop: ShopPanel | null = null;
   gallery: GalleryPanel | null = null;
+  souvenir: SouvenirPanel | null = null;
+  /** 当前登顶的观景台地标（非空 = 俯瞰模式） */
+  deckLandmark: Landmark | null = null;
+  /** 登顶前玩家位置（下塔时恢复） */
+  deckReturn: { x: number; z: number } | null = null;
+  dayNight: DayNightSystem | null = null;
+  weather: WeatherSystem | null = null;
   session: CloudSession | null = null;
 
   /** API 前缀（dev 由 vite 代理 /api，生产同源部署） */
@@ -82,6 +93,11 @@ export class GameEngine {
     pos: { x: 0, z: 0 },
     fps: 0,
     photoActive: false,
+    /** 昼夜系统：游戏钟面（HH:MM）与是否夜晚 */
+    clock: '08:00',
+    night: false,
+    /** 天气系统：当前天气 */
+    weather: '晴',
     /** P2-3：本次会话是否灰度命中新版本 */
     grayCohort: false,
   };
@@ -142,6 +158,14 @@ export class GameEngine {
         this.world = built.root;
         worldTick = built.tick;
         this.three.add(this.world);
+        // 昼夜系统接管场景雾/光照/天空句柄
+        this.three.fog = built.fog;
+        this.dayNight = new DayNightSystem({
+          lighting: built.lighting,
+          skyMat: built.skyMat,
+          fog: built.fog,
+          renderer: this.renderer,
+        });
 
         // 出生点（回档优先）
         const spawn = this.sceneData!.spawnPoints.find(s => s.id === this.opts.spawnId)
@@ -172,8 +196,16 @@ export class GameEngine {
         // 拍照模式
         this.photoMode = new PhotoMode(this.opts.container, this.sceneData!.landmarks, hits => {
           this.photoHits = hits;
-          hits.forEach(h => this.gameplay?.photo(h.landmark.id));
+          const isNight = this.dayNight?.isNight() ?? false;
+          hits.forEach(h => this.gameplay?.photo(h.landmark.id, { night: isNight }));
+        }, {
+          // 自拍模式：由引擎查询昼夜供夜间自拍判定
+          isNight: () => this.dayNight?.isNight() ?? false,
+          noteSelfie: () => this.gameplay?.noteSelfie(),
         });
+
+        // 天气系统（雨/雪粒子 + HUD 天气角标）
+        this.weather = new WeatherSystem(this.three);
 
         // 交通系统（地铁站交互 → 乘车动画 → 跨区传送）
         if (this.sceneData!.traffic) {
@@ -202,6 +234,13 @@ export class GameEngine {
             giveItem: (id, n) => this.gameplay?.addItem(id, n),
             panelGuard: () => this.panelOpen(),
             toast: msg => this.pushToast(msg),
+            onTalk: () => this.gameplay?.noteTalk(),
+            // 动态随机 NPC（城市生气）+ 天气/夜晚对白
+            dynamicCount: 16,
+            isNight: () => this.dayNight?.isNight() ?? false,
+            weatherKind: () => this.weather?.kind ?? 'sunny',
+            // 店铺 NPC / 移动小摊购买（复用 Gameplay.buy：扣钱+给物品+美食计数）
+            buy: id => this.gameplay?.buy(id) ?? false,
           });
           this.npc.build();
         }
@@ -240,6 +279,15 @@ export class GameEngine {
           panelGuard: () => this.panelOpen(),
           toast: msg => this.pushToast(msg),
           onChanged: () => void this.saveNow(),
+        });
+
+        // 纪念品图鉴（O 键）：到访/购买收集的纪念品展示
+        this.souvenir = new SouvenirPanel({
+          container: this.opts.container,
+          view: () => this.gameplay?.souvenirView() ?? [],
+          count: () => this.gameplay?.souvenirCount() ?? [0, 0],
+          panelGuard: () => this.panelOpen(),
+          toast: msg => this.pushToast(msg),
         });
 
         // 移动端触屏控制（首次 touch 指针时自动激活）
@@ -309,8 +357,9 @@ export class GameEngine {
     if (e.repeat) return;
     const k = e.key.toLowerCase();
     if (k === 'e' && this.player) {
-      // NPC 对话优先（更近的交互），否则地铁站
+      // NPC 对话优先（更近的交互），否则观景台登顶/下塔，否则地铁站
       if (this.npc?.tryInteract(this.player.position)) return;
+      if (this.tryDeck()) return;
       // 站内交互键：手动探测最近站并开面板（transit.update 每帧轮询 keys 不可靠，
       // 因为合成键盘事件在 keyup 后 keys 已清空，改由事件直推）
       this.transit?.tryInteract(this.player.position);
@@ -319,6 +368,10 @@ export class GameEngine {
     if (k === 'c' && this.photoMode && this.player) {
       this.photoMode.toggle();
       this.state.photoActive = this.photoMode.active;
+    } else if (k === 'f' && this.photoMode?.active) {
+      // 自拍模式切换（举起相机后）
+      this.photoMode.toggleSelfie();
+      this.pushToast(this.photoMode.selfie ? '自拍模式开启' : '自拍模式关闭');
     } else if (k === 's' && this.shop && this.player && !this.photoMode?.active) {
       // P2 商店/投资面板（拍照模式时不抢占）
       this.shop.toggle();
@@ -326,6 +379,9 @@ export class GameEngine {
     } else if (k === 'g' && this.gallery && this.player && !this.photoMode?.active) {
       // P2-4 作品广场
       void this.gallery.toggle();
+    } else if (k === 'o' && this.souvenir && this.player && !this.photoMode?.active) {
+      // 纪念品图鉴
+      this.souvenir.toggle();
     } else if (k === ' ' && this.photoMode?.active && this.camera) {
       e.preventDefault();
       this.photoMode.shoot(this.camera);
@@ -385,6 +441,51 @@ export class GameEngine {
     try { await uploadSave(this.session, save); } catch { /* 离线静默 */ }
   }
 
+  /** 观景台登顶/下塔：E 键调用。在 deck 地标光圈内登顶俯瞰，已登顶则下塔 */
+  private tryDeck(): boolean {
+    if (!this.player || !this.sceneData) return false;
+    // 已在俯瞰：下塔
+    if (this.deckLandmark) {
+      this.exitDeck();
+      return true;
+    }
+    // 找最近的 deck 地标（光圈内）
+    const pos = this.player.position;
+    let best: Landmark | null = null;
+    let bestD = Infinity;
+    for (const l of this.sceneData.landmarks) {
+      if (!l.deck || l.enabled === false || !l.latlng) continue;
+      const p = proj(l.latlng.lat, l.latlng.lng);
+      const d = Math.hypot(pos.x - p.x, pos.z - p.z);
+      if (d < (l.interactRadius ?? 600) && d < bestD) { best = l; bestD = d; }
+    }
+    if (best) this.enterDeck(best);
+    return !!best;
+  }
+
+  /** 登顶：冻结地面移动，相机飞升到塔顶俯瞰 */
+  private enterDeck(lm: Landmark) {
+    if (!this.player || !lm.latlng) return;
+    const p = proj(lm.latlng.lat, lm.latlng.lng);
+    this.deckReturn = { x: this.player.position.x, z: this.player.position.z };
+    const height = (LABEL_HEIGHT[lm.id] ?? 40) + 6;
+    this.deckLandmark = lm;
+    this.player.deckMode(true, p.x, p.z, height);
+    this.pushToast(`登顶「${lm.name}」观景台，俯瞰全城`);
+    // 登顶可拍夜景/俯瞰照
+    void this.saveNow();
+  }
+
+  /** 下塔：恢复地面位置与控制 */
+  private exitDeck() {
+    if (!this.player || !this.deckReturn) return;
+    this.deckLandmark = null;
+    this.player.deckMode(false);
+    this.player.teleport(this.deckReturn.x, this.deckReturn.z);
+    this.deckReturn = null;
+    this.pushToast('回到地面');
+  }
+
   /** 面板占用判断（B/T 等模式键冲突防护） */
   panelOpen() {
     return this.transit?.panelOpen === true
@@ -393,7 +494,9 @@ export class GameEngine {
       || this.photoMode?.active === true
       || this.buildMode?.active === true
       || this.shop?.isOpen === true
-      || this.gallery?.isOpen === true;
+      || this.gallery?.isOpen === true
+      || this.souvenir?.isOpen === true
+      || this.deckLandmark !== null;
   }
 
   /** P2-4 导入他人作品：以玩家当前位置为中心复制 placements（付费 ¥200） */
@@ -443,6 +546,8 @@ export class GameEngine {
   /** 乘车到站：扣费 + 事件 + 立即存档 */
   private onRideArrive(r: RideResult) {
     if (!this.gameplay) return;
+    // 每日任务：按载具类型上报乘车
+    this.gameplay.noteRide((r.route as any).kind ?? '');
     // P2 地铁日票（fare_free）：地铁线免费（巴士/索道照常）
     const isMetro = (r.route as any).vehicle === 'metro' || /地铁/.test(r.route.name ?? '');
     if (isMetro && this.gameplay.hasEffect('fare_free')) {
@@ -478,6 +583,15 @@ export class GameEngine {
 
     // P1 角色动画：NPC 浮动微动
     this.npc?.tick?.(t);
+
+    // 日夜循环推进（虚拟时钟）
+    this.dayNight?.update(dt);
+    this.state.clock = this.dayNight?.clockString() ?? '08:00';
+    this.state.night = this.dayNight?.isNight() ?? false;
+
+    // 天气推进（雨/雪粒子）
+    this.weather?.update(dt);
+    this.state.weather = this.weather?.label ?? '晴';
 
     // 交通：乘车期间接管相机与玩家
     if (this.transit && this.player) {
@@ -542,6 +656,7 @@ export class GameEngine {
     window.removeEventListener('resize', this.onResize);
     this.photoMode?.dispose();
     this.transit?.dispose();
+    this.weather?.dispose();
     this.buildMode?.dispose();
     this.teleport?.dispose();
     this.npc?.dispose();

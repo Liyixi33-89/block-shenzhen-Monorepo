@@ -9,17 +9,27 @@ export interface PhotoHit {
   coverage: number;   // 0-1 入镜占比（近似：距离比）
 }
 
+/** 拍照模式扩展回调（自拍/夜景任务上报） */
+export interface PhotoExtras {
+  isNight: () => boolean;
+  noteSelfie: () => void;
+}
+
 export class PhotoMode {
   active = false;
+  /** 自拍模式：翻转相机视角对准玩家，快门上报 daily:selfie */
+  selfie = false;
   private overlay: HTMLDivElement;
   private frame: HTMLDivElement;
   private flash: HTMLDivElement;
   private onShot: (hits: PhotoHit[]) => void;
   private landmarks: Scene['landmarks'];
+  private extras: PhotoExtras;
 
-  constructor(container: HTMLElement, landmarks: Scene['landmarks'], onShot: (hits: PhotoHit[]) => void) {
+  constructor(container: HTMLElement, landmarks: Scene['landmarks'], onShot: (hits: PhotoHit[]) => void, extras: PhotoExtras) {
     this.landmarks = landmarks;
     this.onShot = onShot;
+    this.extras = extras;
 
     // 相机取景框覆盖层
     this.overlay = document.createElement('div');
@@ -62,7 +72,16 @@ export class PhotoMode {
   toggle(): boolean {
     this.active = !this.active;
     this.overlay.style.display = this.active ? 'block' : 'none';
+    if (!this.active) this.selfie = false;
     return this.active;
+  }
+
+  /** 切换自拍模式（需相机举起后）：翻转视角朝向玩家，快门记 daily:selfie */
+  toggleSelfie(): boolean {
+    if (!this.active) return false;
+    this.selfie = !this.selfie;
+    this.frame.style.borderColor = this.selfie ? '#ff8fb0' : 'rgba(255,255,255,0.85)';
+    return this.selfie;
   }
 
   /**
@@ -73,6 +92,13 @@ export class PhotoMode {
     // 白闪
     this.flash.style.opacity = '1';
     setTimeout(() => { this.flash.style.opacity = '0'; }, 120);
+
+    // 自拍模式：记录每日自拍，主体为玩家本人（不入地标册）
+    if (this.selfie) {
+      this.extras.noteSelfie();
+      this.onShot([]);
+      return [];
+    }
 
     const camDir = new THREE.Vector3();
     camera.getWorldDirection(camDir);

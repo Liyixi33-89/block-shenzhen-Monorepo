@@ -20,6 +20,8 @@ export interface PlayerAPI {
   keys: Set<string>;
   /** 乘车/面板期间挂起玩家控制 */
   suspended: boolean;
+  /** 观景台登顶俯瞰模式：active 时冻结地面移动，相机绕塔顶环视俯瞰 */
+  deckMode(active: boolean, x?: number, z?: number, height?: number): void;
   update(dt: number, _landmarks: Landmark[]): void;
   dispose(): void;
   teleport(x: number, z: number, f?: number): void;
@@ -36,6 +38,8 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
   const keys = new Set<string>();
   let suspended = false;
   let dragging = false, lastX = 0, lastY = 0;
+  // 观景台俯瞰相机（登顶时非空：{塔顶x,z,height}）
+  let deckCam: { x: number; z: number; height: number } | null = null;
 
   // 玩家化身：像素小人（方块身体 + 头 + 可摆动四肢）
   // P1：四肢做成独立 pivot，行走时摆动、奔跑加速、闲置微呼吸
@@ -119,6 +123,18 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
   window.addEventListener('wheel', onWheel, { passive: false });
 
   function update(dt: number, _landmarks: Landmark[]) {
+    // 观景台俯瞰：冻结地面移动，相机绕塔顶环视
+    if (deckCam) {
+      keys.clear();
+      avatar.position.set(deckCam.x, 0, deckCam.z);
+      avatar.rotation.y = facing + Math.PI;
+      const cx = deckCam.x + Math.sin(facing) * camDist * Math.cos(camPitch);
+      const cz = deckCam.z + Math.cos(facing) * camDist * Math.cos(camPitch);
+      const cy = deckCam.height + camDist * Math.sin(camPitch);
+      camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.25);
+      camera.lookAt(deckCam.x, deckCam.height - 4, deckCam.z);
+      return;
+    }
     if (suspended) {
       keys.clear();
       return;
@@ -196,6 +212,19 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
     /** 缩放外部注入（触屏捏合） */
     zoom(d: number) {
       camDist = THREE.MathUtils.clamp(camDist + d, 12, 90);
+    },
+    /** 观景台登顶俯瞰：active 时相机绕塔顶环视；否则恢复正常跟随 */
+    deckMode(active: boolean, x?: number, z?: number, height?: number) {
+      if (active && x !== undefined && z !== undefined && height !== undefined) {
+        deckCam = { x, z, height };
+        suspended = true;
+        camDist = Math.min(camDist, 30);   // 俯瞰距离适中
+        camPitch = Math.max(camPitch, 0.3);
+      } else {
+        deckCam = null;
+        suspended = false;
+      }
+      keys.clear();
     },
   };
 }
