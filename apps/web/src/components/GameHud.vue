@@ -70,6 +70,13 @@ const KEYMAP: Array<{ key: string; desc: string }> = isTouch ? [
       <span class="hud-money"><span class="icon" v-html="ic('money')" /> ¥{{ hud.money.toLocaleString() }}</span>
       <span v-if="engRef?.state.grayCohort" class="hud-gray">体验版 v{{ hud.version }}</span>
     </div>
+    <div class="hud-box hud-tc">
+      <span class="hud-clock"><span class="icon" v-html="ic('clock', 13)" /> {{ engRef?.state.clock }}</span>
+      <span class="hud-weather" :class="engRef?.state.weather === '雪' ? 'cold' : ''">
+        <span class="icon" v-html="ic(engRef?.state.weather === '雨' ? 'rain' : engRef?.state.weather === '雪' ? 'snow' : 'sun', 13)" /> {{ engRef?.state.weather }}
+      </span>
+      <span v-if="engRef?.state.night" class="hud-night">夜</span>
+    </div>
     <div v-if="hud.landmark" class="hud-box hud-landmark">
       <span class="icon" v-html="ic('visit')" /> {{ hud.landmark }} <span class="muted">（已到访 · <kbd>C</kbd> 拍照）</span>
     </div>

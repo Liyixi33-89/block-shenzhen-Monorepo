@@ -3,7 +3,8 @@
 export type IconName =
   | 'location' | 'money' | 'photo' | 'quest' | 'visit' | 'build' | 'teleport'
   | 'camera' | 'metro' | 'bus' | 'map' | 'exit' | 'lock' | 'clock' | 'check'
-  | 'building' | 'tree' | 'train' | 'lamp' | 'box' | 'keys' | 'info' | 'gamepad';
+  | 'building' | 'tree' | 'train' | 'lamp' | 'box' | 'keys' | 'info' | 'gamepad'
+  | 'sun' | 'rain' | 'snow';
 
 const P: Record<IconName, string> = {
   // 定位：圆点+光标形
@@ -52,6 +53,12 @@ const P: Record<IconName, string> = {
   info: '<circle cx="8" cy="8" r="6.2"/><path d="M8 7.2v4M8 4.8v.01"/>',
   // 手柄（进入世界）
   gamepad: '<path d="M5 5h6a4.5 4.5 0 014.4 5.4c-.3 1.4-1.7 2.2-3 1.5L10.2 10H5.8L3.6 11.9c-1.3.7-2.7-.1-3-1.5A4.5 4.5 0 015 5z"/><path d="M5.5 7v2M4.5 8h2M10.5 7.5v.01M12 8.5v.01"/>',
+  // 晴（太阳）
+  sun: '<circle cx="8" cy="8" r="3.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4"/>',
+  // 雨（云+雨滴）
+  rain: '<path d="M5 5.5a3 3 0 015.5-1.2A2.5 2.5 0 0111 9.5H5.5a2.8 2.8 0 01-.5-4z"/><path d="M5.5 11.5v2M8.5 11.5v2M11.5 11.5v2"/>',
+  // 雪（云+雪花）
+  snow: '<path d="M5 5.5a3 3 0 015.5-1.2A2.5 2.5 0 0111 9.5H5.5a2.8 2.8 0 01-.5-4z"/><path d="M8 11v4M6 12.5l4-1M10 12.5l-4 1"/>',
 };
 
 /** 生成内联 SVG 字符串 */

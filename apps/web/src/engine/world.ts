@@ -5,7 +5,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { proj } from '@block-sz/shared';
 import type { Scene } from '@block-sz/schema';
 import { BUILDERS, LABEL_HEIGHT } from './builders';
-import { buildSky, buildSea, buildLighting, buildDistantHills } from './atmosphere';
+import { buildSky, buildSea, buildLighting, buildDistantHills, type LightingRig } from './atmosphere';
 import { facadeMaterial, groundMaterial } from './textures';
 
 /** P2 GLTF 加载器（懒建，复用单例）。路径约定：public/content/models/{sceneId}/{landmarkId}.glb */
@@ -250,13 +250,26 @@ function buildTraffic(scene: Scene): THREE.Group {
   return g;
 }
 
+/** 世界构建结果：root 场景组 + 每帧 tick + 氛围句柄（昼夜/天气可调） */
+export interface WorldHandle {
+  root: THREE.Group;
+  tick: (t: number) => void;
+  /** 光照句柄（日光/天光/补光），供昼夜循环调节 */
+  lighting: LightingRig;
+  /** 天空材质（uniforms 可控） */
+  skyMat: THREE.ShaderMaterial;
+  /** 场景雾（昼夜循环可调色/浓度） */
+  fog: THREE.Fog;
+}
+
 /** 主构建入口 */
-export function buildWorld(scene: Scene): { root: THREE.Group; tick: (t: number) => void } {
+export function buildWorld(scene: Scene): WorldHandle {
   const root = new THREE.Group();
   const ticks: Array<(t: number) => void> = [];
 
   // 氛围：天空穹顶 + 远山
-  root.add(buildSky());
+  const sky = buildSky();
+  root.add(sky.mesh);
   root.add(buildDistantHills());
 
   // 波光海面
@@ -333,7 +346,14 @@ export function buildWorld(scene: Scene): { root: THREE.Group; tick: (t: number)
   root.add(buildTraffic(scene));
 
   // 光照
-  root.add(buildLighting());
+  const lighting = buildLighting();
+  root.add(lighting.group);
 
-  return { root, tick: (t: number) => ticks.forEach(f => f(t)) };
+  return {
+    root,
+    tick: (t: number) => ticks.forEach(f => f(t)),
+    lighting,
+    skyMat: sky.mat,
+    fog: new THREE.Fog(0xbfd4e6, 1200, 5600),
+  };
 }

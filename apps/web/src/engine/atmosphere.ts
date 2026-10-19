@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 
 /** 渐变天空穹顶（顶蓝底白，像素风色带） */
-export function buildSky(): THREE.Mesh {
+export function buildSky(): { mesh: THREE.Mesh; mat: THREE.ShaderMaterial } {
   const geo = new THREE.SphereGeometry(7200, 16, 10);
   const mat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
@@ -31,7 +31,7 @@ export function buildSky(): THREE.Mesh {
     `,
   });
   const sky = new THREE.Mesh(geo, mat);
-  return sky;
+  return { mesh: sky, mat };
 }
 
 /** 波光海面：大平面 + 顶点波动动画（低频省性能） */
@@ -58,7 +58,14 @@ export function buildSea(): { mesh: THREE.Mesh; update: (t: number) => void } {
 }
 
 /** 环境光照组合（像素风高对比 + P0 主光投影） */
-export function buildLighting(): THREE.Group {
+export interface LightingRig {
+  group: THREE.Group;
+  sun: THREE.DirectionalLight;
+  hemi: THREE.HemisphereLight;
+  fill: THREE.DirectionalLight;
+}
+
+export function buildLighting(): LightingRig {
   const g = new THREE.Group();
   // 天光：偏蓝顶光 + 暖地面反光
   const hemi = new THREE.HemisphereLight(0xbfd9ff, 0x6b7f52, 1.0);
@@ -81,7 +88,7 @@ export function buildLighting(): THREE.Group {
   const fill = new THREE.DirectionalLight(0x88a8ff, 0.28);
   fill.position.set(-400, 300, -350);
   g.add(fill);
-  return g;
+  return { group: g, sun, hemi, fill };
 }
 
 /** 远山剪影环（深圳郊野远景） */
