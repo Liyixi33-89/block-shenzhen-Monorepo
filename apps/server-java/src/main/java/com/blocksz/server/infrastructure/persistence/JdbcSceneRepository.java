@@ -25,19 +25,29 @@ public class JdbcSceneRepository implements SceneRepository {
 
     @Override
     public void saveDraft(String sceneId, Map<String, Object> payload, String version) {
+        int next = nextSeq(sceneId);
         jdbc.update("""
-                INSERT OR REPLACE INTO scenes (scene_id, kind, version, payload, seq)
-                VALUES (?, 'draft', ?, ?, (SELECT COALESCE(MAX(seq),0)+1 FROM scenes WHERE scene_id = ?))
-                """, sceneId, version, JsonColumns.write(payload), sceneId);
+                INSERT INTO scenes (scene_id, kind, version, payload, seq)
+                VALUES (?, 'draft', ?, ?, ?)
+                ON DUPLICATE KEY UPDATE payload = VALUES(payload), seq = VALUES(seq)
+                """, sceneId, version, JsonColumns.write(payload), next);
     }
 
     @Override
     public void addPublished(String sceneId, String version, Map<String, Object> payload) {
+        int next = nextSeq(sceneId);
         jdbc.update("""
                 INSERT INTO scenes (scene_id, kind, version, payload, seq)
-                VALUES (?, 'published', ?, ?, (SELECT COALESCE(MAX(seq),0)+1 FROM scenes WHERE scene_id = ?))
+                VALUES (?, 'published', ?, ?, ?)
                 ON DUPLICATE KEY UPDATE payload = VALUES(payload), seq = VALUES(seq)
-                """, sceneId, version, JsonColumns.write(payload), sceneId);
+                """, sceneId, version, JsonColumns.write(payload), next);
+    }
+
+    /** 下一个 seq：先查 MAX(seq)+1，避免子查询引用目标表（MySQL 限制）。 */
+    private int nextSeq(String sceneId) {
+        Integer max = jdbc.queryForObject(
+                "SELECT COALESCE(MAX(seq),0) FROM scenes WHERE scene_id = ?", Integer.class, sceneId);
+        return (max == null ? 0 : max) + 1;
     }
 
     @Override
