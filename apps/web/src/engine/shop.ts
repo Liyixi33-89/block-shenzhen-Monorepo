@@ -21,7 +21,7 @@ export interface ShopOptions {
 }
 
 const KIND_LABELS: Record<string, string> = {
-  consumable: '消耗', deco: '装饰', material: '材料', camera: '相机',
+  consumable: '消耗', deco: '装饰', material: '材料', camera: '相机', food: '美食', souvenir: '纪念品',
 };
 
 export class ShopPanel {
