@@ -63,6 +63,12 @@ export const playerSaveSchema = z.object({
   investSettledAt: z.string().default(''),
   /** 激活中的消耗品效果：effect -> 到期时间戳(ms) */
   activeEffects: z.record(z.number()).default({}),
+  /** 每日任务计数器：daily:xxx 键 -> 当日累计值（跨天自动清空，见 dailyStamp） */
+  dailyCounters: z.record(z.number().int().min(0)).default({}),
+  /** 每日计数器归属的日期（YYYY-MM-DD，跨天则清零重置） */
+  dailyStamp: z.string().default(''),
+  /** 已收集纪念品 id（纪念品图鉴：到访/购买/任务获取） */
+  souvenirs: z.array(z.string()).default([]),
 });
 
 export type PlayerSave = z.infer<typeof playerSaveSchema>;

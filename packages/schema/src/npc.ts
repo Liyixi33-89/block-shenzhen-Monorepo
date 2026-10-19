@@ -27,6 +27,14 @@ export const npcSchema = z.object({
   latlng: latLngSchema.optional(),
   /** 对话树入口 */
   dialogue: z.array(dialogueNodeSchema).min(1),
+  /** 店铺售卖：店铺 NPC 可购买商品（对应场景 shopItems） */
+  shopItems: z.array(z.object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    price: z.number().int().nonnegative(),
+  })).optional(),
+  /** 店铺吆喝语（打开对话时展示） */
+  shopGreet: z.string().optional(),
   enabled: z.boolean().default(true),
 }).refine(v => v.landmark !== undefined || v.latlng !== undefined, {
   message: 'npc 必须提供 landmark 或 latlng 之一',

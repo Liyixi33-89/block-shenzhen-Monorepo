@@ -40,6 +40,10 @@ export const landmarkSchema = z.object({
   /** 是否可拍照进图鉴 */
   photoable: z.boolean().default(true),
   tags: z.array(z.string()).default([]),
+  /** 到访赠送的纪念品 id（对应 shopItems 中 kind=souvenir 的商品） */
+  souvenir: z.string().optional(),
+  /** 是否为可登顶观景台（高层地标：塔顶俯瞰/夜景） */
+  deck: z.boolean().optional(),
   enabled: z.boolean().default(true),
 });
 

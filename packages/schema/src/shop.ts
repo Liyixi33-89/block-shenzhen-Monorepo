@@ -2,7 +2,7 @@
 import { z } from 'zod';
 
 /** 商店商品类型 */
-export const shopItemKindSchema = z.enum(['consumable', 'deco', 'material', 'camera']);
+export const shopItemKindSchema = z.enum(['consumable', 'deco', 'material', 'camera', 'food', 'souvenir']);
 
 /** 商店商品：数据驱动，引擎只解释 */
 export const shopItemSchema = z.object({
@@ -20,6 +20,8 @@ export const shopItemSchema = z.object({
   grants: z.array(z.object({ id: z.string(), n: z.number().int().positive() })).default([]),
   /** 相机皮肤样式名（kind=camera） */
   skin: z.string().optional(),
+  /** 美食种类标识（kind=food，同一 foodTag 只计一种，供 daily:food 去重） */
+  foodTag: z.string().optional(),
   icon: z.string().optional(),
   enabled: z.boolean().default(true),
 });
