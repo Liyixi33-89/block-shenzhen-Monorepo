@@ -38,6 +38,9 @@ export function snapshotToSave(snap: GameplaySnapshot, extras: SaveExtras): Play
     investments: snap.investments,
     investSettledAt: snap.investSettledAt,
     activeEffects: snap.activeEffects,
+    dailyCounters: snap.dailyCounters,
+    dailyStamp: snap.dailyStamp,
+    souvenirs: snap.souvenirs,
   } as PlayerSave;
 }
 
@@ -59,5 +62,8 @@ export function saveToInit(saved: any): Partial<GameplaySnapshot> {
     investments: saved.investments ?? {},
     investSettledAt: saved.investSettledAt ?? '',
     activeEffects: saved.activeEffects ?? {},
+    dailyCounters: saved.dailyCounters ?? {},
+    dailyStamp: saved.dailyStamp ?? '',
+    souvenirs: saved.souvenirs ?? [],
   };
 }

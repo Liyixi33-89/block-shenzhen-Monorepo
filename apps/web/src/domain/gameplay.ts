@@ -23,6 +23,12 @@ export interface GameplaySnapshot {
   investments: Record<string, number>;
   investSettledAt: string;
   activeEffects: Record<string, number>;
+  /** 每日任务计数器：daily:xxx 键（去前缀）-> 当日累计值 */
+  dailyCounters: Record<string, number>;
+  /** 每日计数器归属日期（YYYY-MM-DD，跨天清零） */
+  dailyStamp: string;
+  /** 已收集纪念品 id（纪念品图鉴） */
+  souvenirs: string[];
 }
 
 /** photoSet 冒号编码解析（P2 抽取兼容）：
@@ -60,6 +66,9 @@ export class Gameplay {
       investments: {},
       investSettledAt: '',
       activeEffects: {},
+      dailyCounters: {},
+      dailyStamp: '',
+      souvenirs: [],
       ...init,
     };
     // 构造期先标记一次「解锁提示」，避免回档玩家开局被 18 条解锁提示刷屏
@@ -67,6 +76,8 @@ export class Gameplay {
     for (const q of this.scene.quests) {
       if (q.enabled !== false && this.questsReady(q)) this.unlockedNotified.add(q.id);
     }
+    // 每日任务跨天刷新：进入新的一天则清零当日计数器 + 重置每日任务进度
+    this.rollDaily();
   }
 
   on(fn: (e: GameplayEvent) => void) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
@@ -76,19 +87,34 @@ export class Gameplay {
   visit(landmarkId: string) {
     if (this.state.visited.includes(landmarkId)) return false;
     this.state.visited.push(landmarkId);
+    this.bumpDaily('dailyDistricts', 1);   // 每日「探索新区」
+    // 文化图鉴：到访文化地标即体验一项岭南文化（首次到访触发）
+    const lm = this.scene.landmarks.find(l => l.id === landmarkId);
+    if (lm?.tags?.includes('culture')) {
+      this.noteCulture();
+      this.emit({ type: 'info', payload: { msg: `体验岭南文化：${lm.name}` } });
+    }
+    // 纪念品：到访特定地标赠送对应纪念品（区徽章/纪念章等）
+    if (lm?.souvenir) {
+      this.noteSouvenir(lm.souvenir);
+    }
     this.emit({ type: 'visit', payload: landmarkId });
     this.checkQuests({ visited: true, id: landmarkId });
     return true;
   }
 
   // ---------- 拍照 ----------
-  photo(landmarkId: string) {
+  photo(landmarkId: string, opts?: { night?: boolean }) {
     const first = !this.state.photos.includes(landmarkId);
     if (first) {
       this.state.photos.push(landmarkId);
       this.state.ascensionPoints += 10;
       this.emit({ type: 'photo', payload: landmarkId });
     }
+    // 每日「今天拍摄 N 个建筑」
+    this.bumpDaily('dailyPhotos', 1);
+    // 每日「夜晚拍摄一张照片」（夜晚模式）
+    if (opts?.night) this.bumpDaily('nightPhoto', 1);
     // 摄影季票（photo_bonus）：奖励翻倍
     const bonus = this.hasEffect('photo_bonus') ? 2 : 1;
     const base = (first ? 50 : 5) * bonus;
@@ -137,6 +163,7 @@ export class Gameplay {
   walk(meters: number) {
     this.walkAcc += meters;
     if (this.walkAcc >= 50) {
+      this.bumpDaily('walk', 1);   // 每日「步行」（每 50 单位记一程）
       this.emit({ type: 'walk', payload: this.walkAcc });
       this.checkQuests({ walked: this.walkAcc });
       this.walkAcc = 0;
@@ -146,6 +173,95 @@ export class Gameplay {
   /** 当前到访/拍摄计数（供 daily 类条件） */
   countOf(kind: 'photo' | 'visit') {
     return kind === 'photo' ? this.state.photos.length : this.state.visited.length;
+  }
+
+  /** 已体验的文化地标数（q_culture 文化图鉴进度） */
+  cultureCount(): number {
+    const cult = new Set(this.scene.landmarks.filter(l => l.tags?.includes('culture')).map(l => l.id));
+    return this.state.visited.filter(id => cult.has(id)).length;
+  }
+
+  // ==================== 每日计数器（每日任务驱动源） ====================
+
+  /** 当前日期（YYYY-MM-DD，本地时区） */
+  private today(): string {
+    const d = new Date();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${m}-${day}`;
+  }
+
+  /** 跨天检查：日期变更则清零当日计数器并重置每日任务进度 */
+  private rollDaily() {
+    const t = this.today();
+    if (this.state.dailyStamp === t) return;
+    // 记录重置前的完成状态，用于提示
+    const wasDone = new Set(
+      this.scene.quests
+        .filter(q => q.cycle === 'daily' && this.state.questProgress[q.id]?.done)
+        .map(q => q.id),
+    );
+    this.state.dailyStamp = t;
+    this.state.dailyCounters = {};
+    // 重置每日任务进度（已完成的每日任务清零，允许当日重新完成）
+    for (const q of this.scene.quests) {
+      if (q.cycle !== 'daily') continue;
+      delete this.state.questProgress[q.id];
+      this.unlockedNotified.delete(q.id);
+    }
+    if (wasDone.size) this.emit({ type: 'info', payload: { msg: '新的一天，每日任务已刷新' } });
+  }
+
+  /** 每日计数器累加（键为 daily:xxx 去前缀后的名字） */
+  bumpDaily(key: string, n = 1) {
+    this.rollDaily();   // 确保日期为当天
+    this.state.dailyCounters[key] = (this.state.dailyCounters[key] ?? 0) + n;
+    this.checkQuests({});
+  }
+
+  /** 玩法上报：与 NPC 完成一次对话（每日 dailyTalk） */
+  noteTalk() { this.bumpDaily('dailyTalk', 1); }
+
+  /** 玩法上报：乘坐交通工具到站（kind: metro/bus/boat/cable → 每日 bus/metro 等） */
+  noteRide(kind: string) {
+    const key = kind === 'metro' ? 'metro' : kind === 'bus' ? 'bus' : kind === 'boat' ? 'boat' : kind === 'cable' ? 'cable' : '';
+    if (key) this.bumpDaily(key, 1);
+  }
+
+  /** 玩法上报：品尝一种美食（每日 food，按种类去重计数由调用方保证） */
+  noteFood() { this.bumpDaily('food', 1); }
+
+  /** 玩法上报：拍一张自拍（每日 selfie） */
+  noteSelfie() { this.bumpDaily('selfie', 1); }
+
+  /** 玩法上报：体验一项岭南文化（每日 culture） */
+  noteCulture() { this.bumpDaily('culture', 1); }
+
+  /** 收集一件纪念品（到访地标领取/任务奖励；去重入图鉴） */
+  noteSouvenir(id: string): boolean {
+    if (this.state.souvenirs.includes(id)) return false;
+    this.state.souvenirs.push(id);
+    const it = this.scene.shopItems.find(s => s.id === id);
+    this.emit({ type: 'info', payload: { msg: `获得纪念品：${it?.name ?? id}` } });
+    return true;
+  }
+
+  /** 纪念品图鉴进度：[已收集, 总数] */
+  souvenirCount(): [number, number] {
+    const total = (this.scene.shopItems ?? []).filter(s => s.kind === 'souvenir').length;
+    return [this.state.souvenirs.length, total];
+  }
+
+  /** 纪念品图鉴列表视图：全部纪念品（含未收集），标记是否已拥有 */
+  souvenirView() {
+    return (this.scene.shopItems ?? [])
+      .filter(s => s.kind === 'souvenir')
+      .map(s => ({ id: s.id, name: s.name, desc: s.desc, price: s.price, owned: this.state.souvenirs.includes(s.id) }));
+  }
+
+  /** 每日任务条件求值辅助：读当日计数（daily:xxx 键） */
+  private dailyCount(key: string): number {
+    return this.state.dailyCounters[key] ?? 0;
   }
 
   // ---------- 任务 ----------
@@ -158,13 +274,14 @@ export class Gameplay {
       case 'visit':
         return [this.state.visited.includes(c.target) ? 1 : 0, 1];
       case 'collect': {
-        // daily:xxx 编码（P2 兼容）：photo=拍摄数 / 其他按背包
+        // daily:xxx 编码（P2 兼容）：统一读当日计数器
         const item = c.item as string;
         if (item.startsWith('daily:')) {
           const key = item.slice(6);
           const n = c.n ?? 1;
+          // 兼容旧数据 daily:photo → 历史拍摄总数；其余映射当日计数器
           if (key === 'photo') return [Math.min(this.state.photos.length, n), n];
-          return [(this.state.inventory[item] ?? 0) >= 999 ? n : 0, n]; // daily 其他类型暂不支持
+          return [Math.min(this.dailyCount(key), n), n];
         }
         return [(this.state.inventory[item] ?? 0) >= (c.n ?? 1) ? 1 : 0, 1];
       }
@@ -173,6 +290,10 @@ export class Gameplay {
       case 'interact': {
         // photoSet:a,b,c —— 拍齐集合内全部
         const ids = parsePhotoSet(c.target);
+        // 文化图鉴：photoSet:cultureCount 统计已体验文化地标数
+        if (ids.length === 0 && /cultureCount/.test(c.target)) {
+          return [this.cultureCount(), 6];
+        }
         const got = ids.filter(id => this.state.photos.includes(id)).length;
         return [got, ids.length];
       }
@@ -256,10 +377,10 @@ export class Gameplay {
 
   // ==================== P2 经济：商店 ====================
 
-  /** 商店列表视图（给 UI） */
+  /** 商店列表视图（给 UI）；到访赠送的纪念品（price=0）不进入商店货架 */
   shopView() {
     return this.scene.shopItems
-      .filter(i => i.enabled !== false)
+      .filter(i => i.enabled !== false && !(i.kind === 'souvenir' && i.price === 0))
       .map(i => ({ ...i, bought: this.state.shopBought[i.id] ?? 0 }));
   }
 
@@ -287,6 +408,21 @@ export class Gameplay {
         else this.emit({ type: 'info', payload: { msg: `${item.name} 生效 ${item.durationSec}s` } });
       } else {
         this.addItem(item.id, 1);
+      }
+    } else if (item.kind === 'food') {
+      // 美食：入背包 + 每日品尝上报（按种类去重：同一种只计一次）
+      this.addItem(item.id, 1);
+      if (this.state.inventory[item.id] === 1) {
+        this.noteFood();   // 首次品尝该种类 → 每日 food 计数 +1
+      }
+      this.emit({ type: 'info', payload: { msg: `品尝「${item.name}」` } });
+    } else if (item.kind === 'souvenir') {
+      // 纪念品：入收藏图鉴（去重），不入背包
+      if (!this.state.souvenirs.includes(item.id)) {
+        this.state.souvenirs.push(item.id);
+        this.emit({ type: 'info', payload: { msg: `收藏「${item.name}」` } });
+      } else {
+        this.emit({ type: 'info', payload: { msg: `已收藏过「${item.name}」` } });
       }
     } else {
       this.addItem(item.id, 1);   // deco 装饰入背包
