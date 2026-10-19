@@ -2,7 +2,7 @@
  "id": "shenzhen-main",
  "name": "方块鹏城 · 深圳主场景",
  "desc": "像素风深圳城市探索：9 区 25 地标、地铁 10 线 18 站、观光巴士、深圳湾游船、梧桐山索道",
- "version": "0.3.4",
+ "version": "0.3.7",
  "projection": {
   "origin": {
    "lat": 22.5431,
@@ -405,7 +405,9 @@
     "grade:S",
     "rect:30x28"
    ],
-   "descDetail": "深圳福田CBD核心，与周边写字楼群构成深圳天际线。"
+   "descDetail": "深圳福田CBD核心，与周边写字楼群构成深圳天际线。",
+   "souvenir": "sou_pingan_model",
+   "deck": true
   },
   {
    "id": "civic",
@@ -422,7 +424,8 @@
    "tags": [
     "grade:S",
     "rect:52x26"
-   ]
+   ],
+   "souvenir": "sou_civic_model"
   },
   {
    "id": "lotushill",
@@ -491,7 +494,9 @@
    "tags": [
     "grade:A",
     "rect:26x24"
-   ]
+   ],
+   "souvenir": "sou_kk100_model",
+   "deck": true
   },
   {
    "id": "diwang",
@@ -508,7 +513,9 @@
    "tags": [
     "grade:A",
     "rect:18x20"
-   ]
+   ],
+   "souvenir": "sou_diwang_model",
+   "deck": true
   },
   {
    "id": "dongmen",
@@ -524,7 +531,8 @@
    "photoable": true,
    "tags": [
     "grade:A",
-    "rect:30x26"
+    "rect:30x26",
+    "culture"
    ],
    "descDetail": "老街骑楼下有各种深圳小吃。"
   },
@@ -577,7 +585,8 @@
    "tags": [
     "grade:A",
     "rect:24x18"
-   ]
+   ],
+   "deck": true
   },
   {
    "id": "szu",
@@ -594,7 +603,8 @@
    "tags": [
     "grade:A",
     "rect:40x30"
-   ]
+   ],
+   "souvenir": "sou_szu_badge"
   },
   {
    "id": "happyvalley",
@@ -627,8 +637,11 @@
    "photoable": true,
    "tags": [
     "grade:A",
-    "rect:26x24"
-   ]
+    "rect:26x24",
+    "culture"
+   ],
+   "souvenir": "sou_fan",
+   "deck": true
   },
   {
    "id": "talentpark",
@@ -663,7 +676,9 @@
     "grade:A",
     "rect:34x46"
    ],
-   "descDetail": "在海滨栈道散步远眺对岸香港元朗。"
+   "descDetail": "在海滨栈道散步远眺对岸香港元朗。",
+   "souvenir": "sou_szbay_model",
+   "deck": true
   },
   {
    "id": "mangrove",
@@ -679,7 +694,8 @@
    "photoable": true,
    "tags": [
     "grade:A",
-    "rect:36x26"
+    "rect:36x26",
+    "culture"
    ]
   },
   {
@@ -713,7 +729,8 @@
    "photoable": true,
    "tags": [
     "grade:A",
-    "rect:34x24"
+    "rect:34x24",
+    "culture"
    ],
    "descDetail": "在电子市场淘一部手机，感受深圳速度。"
   },
@@ -731,9 +748,11 @@
    "photoable": true,
    "tags": [
     "grade:A",
-    "rect:44x30"
+    "rect:44x30",
+    "culture"
    ],
-   "descDetail": "夏季人气爆棚，记得防晒。"
+   "descDetail": "夏季人气爆棚，记得防晒。",
+   "souvenir": "sou_dameisha_badge"
   },
   {
    "id": "wutong",
@@ -749,8 +768,10 @@
    "photoable": true,
    "tags": [
     "grade:A",
-    "rect:40x34"
-   ]
+    "rect:40x34",
+    "culture"
+   ],
+   "souvenir": "sou_wutong_pin"
   },
   {
    "id": "gankeng",
@@ -766,7 +787,8 @@
    "photoable": true,
    "tags": [
     "grade:A",
-    "rect:32x26"
+    "rect:32x26",
+    "culture"
    ]
   },
   {
@@ -800,8 +822,10 @@
    "photoable": true,
    "tags": [
     "grade:A",
-    "rect:24x22"
-   ]
+    "rect:24x22",
+    "culture"
+   ],
+   "souvenir": "sou_dapeng_badge"
   },
   {
    "id": "jiaochangwei",
@@ -817,7 +841,8 @@
    "photoable": true,
    "tags": [
     "grade:B",
-    "rect:30x24"
+    "rect:30x24",
+    "culture"
    ]
   }
  ],
@@ -1200,6 +1225,29 @@
    "id": "merchant-dongmen",
    "name": "小摊老板陈叔",
    "landmark": "dongmen",
+   "shopGreet": "陈叔的东门小摊 · 现做现卖",
+   "shopItems": [
+    {
+     "id": "food_cheong_fun",
+     "name": "肠粉",
+     "price": 15
+    },
+    {
+     "id": "food_wonton",
+     "name": "云吞面",
+     "price": 18
+    },
+    {
+     "id": "food_herbal_tea",
+     "name": "凉茶",
+     "price": 10
+    },
+    {
+     "id": "food_char_siu",
+     "name": "叉烧",
+     "price": 22
+    }
+   ],
    "dialogue": [
     {
      "id": "greet",
@@ -2315,5 +2363,263 @@
     ]
    }
   ]
+ },
+ "shopItems": [
+  {
+   "id": "food_shrimp_dumpling",
+   "name": "虾饺",
+   "kind": "food",
+   "desc": "皮薄馅足，广式早茶一盅两件之首",
+   "price": 20,
+   "foodTag": "dumpling",
+   "icon": "food"
+  },
+  {
+   "id": "food_cheong_fun",
+   "name": "肠粉",
+   "kind": "food",
+   "desc": "米浆蒸制，淋豉油，街巷早餐灵魂",
+   "price": 15,
+   "foodTag": "cheong",
+   "icon": "food"
+  },
+  {
+   "id": "food_wonton",
+   "name": "云吞面",
+   "kind": "food",
+   "desc": "鲜虾云吞配竹升面，汤清味浓",
+   "price": 18,
+   "foodTag": "wonton",
+   "icon": "food"
+  },
+  {
+   "id": "food_char_siu",
+   "name": "叉烧",
+   "kind": "food",
+   "desc": "蜜汁烤制，甜咸适口",
+   "price": 22,
+   "foodTag": "charsiu",
+   "icon": "food"
+  },
+  {
+   "id": "food_mooncake",
+   "name": "广式月饼",
+   "kind": "food",
+   "desc": "皮薄松软，莲蓉蛋黄经典味",
+   "price": 25,
+   "foodTag": "mooncake",
+   "icon": "food"
+  },
+  {
+   "id": "food_ginger_milk",
+   "name": "姜撞奶",
+   "kind": "food",
+   "desc": "姜汁撞鲜奶，香滑暖胃",
+   "price": 12,
+   "foodTag": "gingermilk",
+   "icon": "food"
+  },
+  {
+   "id": "food_roasted_goose",
+   "name": "烧鹅",
+   "kind": "food",
+   "desc": "皮脆肉嫩，深井烧味一绝",
+   "price": 28,
+   "foodTag": "goose",
+   "icon": "food"
+  },
+  {
+   "id": "food_congee",
+   "name": "艇仔粥",
+   "kind": "food",
+   "desc": "米香绵滑，佐料丰富",
+   "price": 16,
+   "foodTag": "congee",
+   "icon": "food"
+  },
+  {
+   "id": "food_herbal_tea",
+   "name": "凉茶",
+   "kind": "food",
+   "desc": "廿四味清热，广式养生",
+   "price": 10,
+   "foodTag": "herbaltea",
+   "icon": "food"
+  },
+  {
+   "id": "cons_speed",
+   "name": "疾行符",
+   "kind": "consumable",
+   "desc": "30 秒内移动速度提升",
+   "price": 30,
+   "effect": "speed",
+   "durationSec": 30,
+   "icon": "speed"
+  },
+  {
+   "id": "cons_photo_bonus",
+   "name": "摄影季票",
+   "kind": "consumable",
+   "desc": "60 秒内拍摄奖励翻倍",
+   "price": 40,
+   "effect": "photo_bonus",
+   "durationSec": 60,
+   "icon": "camera"
+  },
+  {
+   "id": "cons_fare_free",
+   "name": "地铁日票",
+   "kind": "consumable",
+   "desc": "120 秒内地铁免费",
+   "price": 35,
+   "effect": "fare_free",
+   "durationSec": 120,
+   "icon": "metro"
+  },
+  {
+   "id": "sou_pingan_model",
+   "name": "平安金融中心微缩模型",
+   "kind": "souvenir",
+   "desc": "到访平安金融中心收藏的地标微缩模型",
+   "price": 0
+  },
+  {
+   "id": "sou_kk100_model",
+   "name": "京基100微缩模型",
+   "kind": "souvenir",
+   "desc": "到访京基100收藏的地标微缩模型",
+   "price": 0
+  },
+  {
+   "id": "sou_szbay_model",
+   "name": "春笋微缩模型",
+   "kind": "souvenir",
+   "desc": "到访深圳湾春笋收藏的地标微缩模型",
+   "price": 0
+  },
+  {
+   "id": "sou_diwang_model",
+   "name": "地王大厦微缩模型",
+   "kind": "souvenir",
+   "desc": "到访地王大厦收藏的地标微缩模型",
+   "price": 0
+  },
+  {
+   "id": "sou_civic_model",
+   "name": "市民中心微缩模型",
+   "kind": "souvenir",
+   "desc": "到访市民中心收藏的地标微缩模型",
+   "price": 0
+  },
+  {
+   "id": "sou_wutong_pin",
+   "name": "梧桐山木棉书签",
+   "kind": "souvenir",
+   "desc": "到访梧桐山收藏的木棉书签",
+   "price": 0
+  },
+  {
+   "id": "sou_dapeng_badge",
+   "name": "大鹏所城徽章",
+   "kind": "souvenir",
+   "desc": "到访大鹏所城收藏的古城徽章",
+   "price": 0
+  },
+  {
+   "id": "sou_dameisha_badge",
+   "name": "大梅沙海滨徽章",
+   "kind": "souvenir",
+   "desc": "到访大梅沙收藏的海滨徽章",
+   "price": 0
+  },
+  {
+   "id": "sou_szu_badge",
+   "name": "深大校徽",
+   "kind": "souvenir",
+   "desc": "到访深圳大学收藏的校徽",
+   "price": 0
+  },
+  {
+   "id": "sou_fan",
+   "name": "深圳城市折扇",
+   "kind": "souvenir",
+   "desc": "到访世界之窗收藏的城市折扇",
+   "price": 0
+  },
+  {
+   "id": "sou_lion_hook",
+   "name": "醒狮挂件",
+   "kind": "souvenir",
+   "desc": "广东醒狮挂件，寓意吉祥",
+   "price": 30
+  },
+  {
+   "id": "sou_porcelain_cup",
+   "name": "广彩瓷杯",
+   "kind": "souvenir",
+   "desc": "广彩手绘瓷杯，岭南工艺",
+   "price": 45
+  },
+  {
+   "id": "sou_transit_card",
+   "name": "深圳通纪念卡",
+   "kind": "souvenir",
+   "desc": "限量版深圳通交通卡",
+   "price": 40
+  },
+  {
+   "id": "sou_postcard",
+   "name": "深圳明信片",
+   "kind": "souvenir",
+   "desc": "深圳天际线手绘明信片",
+   "price": 15
+  },
+  {
+   "id": "sou_travel_pin",
+   "name": "旅行纪念章",
+   "kind": "souvenir",
+   "desc": "城市旅行纪念徽章",
+   "price": 20
+  },
+  {
+   "id": "sou_fish_lantern",
+   "name": "非遗鱼灯",
+   "kind": "souvenir",
+   "desc": "客家非遗鱼灯，流光溢彩",
+   "price": 35
+  },
+  {
+   "id": "sou_lychee_pin",
+   "name": "南山荔枝钥匙扣",
+   "kind": "souvenir",
+   "desc": "南山荔枝造型钥匙扣",
+   "price": 18
+  },
+  {
+   "id": "sou_tea_box",
+   "name": "深圳手信茶礼盒",
+   "kind": "souvenir",
+   "desc": "本地茗茶礼盒，送礼佳品",
+   "price": 55
+  },
+  {
+   "id": "sou_huaqiang_electron",
+   "name": "华强北电子积木",
+   "kind": "souvenir",
+   "desc": "华强北电子元件拼装积木",
+   "price": 25
+  },
+  {
+   "id": "sou_cocopark_magnet",
+   "name": "欢乐海岸冰箱贴",
+   "kind": "souvenir",
+   "desc": "欢乐海岸主题冰箱贴",
+   "price": 12
+  }
+ ],
+ "invest": {
+  "baseCost": 800,
+  "incomePerHour": 300,
+  "maxLevel": 10
  }
 }
