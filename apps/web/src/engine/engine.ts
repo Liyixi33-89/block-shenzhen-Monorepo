@@ -235,8 +235,7 @@ export class GameEngine {
             panelGuard: () => this.panelOpen(),
             toast: msg => this.pushToast(msg),
             onTalk: () => this.gameplay?.noteTalk(),
-            // 动态随机 NPC（城市生气）+ 天气/夜晚对白
-            dynamicCount: 16,
+            // 动态随机 NPC（城市生气）+ 天气/夜晚对白：数量读 scene.config.env.npc.dynamicCount（兜底 16）
             isNight: () => this.dayNight?.isNight() ?? false,
             weatherKind: () => this.weather?.kind ?? 'sunny',
             // 店铺 NPC / 移动小摊购买（复用 Gameplay.buy：扣钱+给物品+美食计数）

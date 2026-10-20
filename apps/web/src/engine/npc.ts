@@ -1,7 +1,7 @@
 // NPC 系统：场景包数据驱动 → 世界摆位渲染（方块小人 + 头顶名牌）→ E 键对话面板 → 效果结算
 import * as THREE from 'three';
 import { proj } from '@block-sz/shared';
-import type { Scene, Npc, DialogueNode } from '@block-sz/schema';
+import type { Scene, Npc, DialogueNode, NpcJobConfig } from '@block-sz/schema';
 import { iconSvg } from './icons';
 import type { WeatherKind } from './weather';
 
@@ -18,7 +18,7 @@ export interface NpcOptions {
   toast: (msg: string) => void;
   /** 开始一段对话时回调（每日 dailyTalk 上报） */
   onTalk?: () => void;
-  /** 动态随机 NPC 数量（0 关闭，参考站城市生气特性） */
+  /** 动态随机 NPC 数量（0 关闭；缺省读 scene.config.env.npc.dynamicCount，兜底 16） */
   dynamicCount?: number;
   /** 是否夜晚（动态 NPC 夜晚对白） */
   isNight?: () => boolean;
@@ -45,8 +45,8 @@ interface NpcEntity {
 // 动态随机 NPC（参考站「方块羊城」特性）：职业加权 + 随机姓氏 + 职业专属对白
 // ---------------------------------------------------------------------------
 
-/** 随机姓氏池（广府常用） */
-const SURNAMES = ['陈', '李', '黄', '梁', '何', '张', '林', '罗', '郭', '冯', '麦', '邓', '谭', '吴', '杨'];
+/** 随机姓氏池（广府常用；scene.config.env.npc.surnames 可覆盖） */
+const DEFAULT_SURNAMES = ['陈', '李', '黄', '梁', '何', '张', '林', '罗', '郭', '冯', '麦', '邓', '谭', '吴', '杨'];
 
 interface JobProfile {
   /** 称呼后缀（女士用「小姐/女士」，男士用「先生」等） */
@@ -69,8 +69,8 @@ interface JobProfile {
   stall?: string[];
 }
 
-/** 职业池（加权）：上班族/学生/老人/游客/小孩/街坊 */
-const JOBS: JobProfile[] = [
+/** 职业池（加权）：上班族/学生/老人/游客/小孩/街坊 —— scene.config.env.npc.jobs 可覆盖 */
+const DEFAULT_JOBS: JobProfile[] = [
   {
     honorific: '先生', body: 0x274a6e, hat: 0x3a5a8a, weight: 4,
     lines: ['赶着去上班，地铁人真多。', '今天又加班，改完这个需求就好。', '早啊，吃过肠粉了吗？'],
@@ -120,8 +120,8 @@ const JOBS: JobProfile[] = [
   },
 ];
 
-/** 动态 NPC 在城市里的游走范围（核心城区，罗湖/福田一带） */
-const DYN_RANGE = { xMin: -700, xMax: 1600, zMin: -700, zMax: 1100 };
+/** 动态 NPC 在城市里的游走范围（核心城区，罗湖/福田一带；config 可覆盖） */
+const DEFAULT_DYN_RANGE = { xMin: -700, xMax: 1600, zMin: -700, zMax: 1100 };
 /** 动态 NPC 之间的最小间距 */
 const DYN_MIN_DIST = 34;
 
@@ -136,17 +136,38 @@ export class NpcSystem {
   private activeNode: DialogueNode | null = null;
   /** 已触发过 give 的选项（一次性效果标记：npcId:nodeId:choiceIdx） */
   private firedEffects = new Set<string>();
-  /** 动态随机 NPC 游走范围 */
+  /** 动态随机 NPC 配置（scene.config.env.npc 覆盖内置默认） */
   private dynRange = { xMin: 0, xMax: 0, zMin: 0, zMax: 0 };
+  private surnames: string[] = DEFAULT_SURNAMES;
+  private jobs: JobProfile[] = DEFAULT_JOBS;
 
   constructor(opts: NpcOptions) {
     this.opts = opts;
 
-    // ---- 动态随机 NPC 游走范围（相对核心城区地标中心）----
+    // ---- 动态随机 NPC：场景配置优先，内置常量兜底 ----
+    const cfg = (opts.data.config?.env as any)?.npc;
+    const cfgRange = cfg?.range;
     this.dynRange = {
-      xMin: DYN_RANGE.xMin, xMax: DYN_RANGE.xMax,
-      zMin: DYN_RANGE.zMin, zMax: DYN_RANGE.zMax,
+      xMin: cfgRange?.xMin ?? DEFAULT_DYN_RANGE.xMin,
+      xMax: cfgRange?.xMax ?? DEFAULT_DYN_RANGE.xMax,
+      zMin: cfgRange?.zMin ?? DEFAULT_DYN_RANGE.zMin,
+      zMax: cfgRange?.zMax ?? DEFAULT_DYN_RANGE.zMax,
     };
+    if (Array.isArray(cfg?.surnames) && cfg.surnames.length) this.surnames = cfg.surnames;
+    if (Array.isArray(cfg?.jobs) && cfg.jobs.length) {
+      // 配置职业覆盖：字段缺省沿用内置语义（rain/night 空池 → 运行时回退 lines）
+      this.jobs = cfg.jobs.map((j: NpcJobConfig) => ({
+        honorific: j.honorific,
+        body: j.body,
+        hat: j.hat,
+        weight: j.weight ?? 1,
+        lines: j.lines?.length ? j.lines : ['你好呀。'],
+        rain: j.rain?.length ? j.rain : undefined,
+        night: j.night?.length ? j.night : undefined,
+        tip: j.tip ?? 0,
+        stall: j.stall?.length ? j.stall : undefined,
+      }));
+    }
 
     // ---- 对话面板 DOM（统一 bsz 风格）----
     this.panel = document.createElement('div');
@@ -209,7 +230,9 @@ export class NpcSystem {
     }
 
     // 动态随机 NPC（城市生气）
-    const dyn = this.opts.dynamicCount ?? 0;
+    // 动态随机 NPC（城市生气）：数量 = 显式传参 > 场景配置 > 内置 16
+    const cfgN = (this.opts.data.config?.env as any)?.npc?.dynamicCount;
+    const dyn = this.opts.dynamicCount ?? (typeof cfgN === 'number' ? cfgN : 16);
     if (dyn > 0) this.buildDynamic(dyn);
   }
 
@@ -233,6 +256,8 @@ export class NpcSystem {
   /** 生成动态随机 NPC：随机职业（加权）/姓氏/位置，带职业专属 + 天气/夜晚对白 */
   private buildDynamic(count: number) {
     const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+    const JOBS = this.jobs;
+    const SURNAMES = this.surnames;
     // 职业加权抽样
     const pickJob = (): JobProfile => {
       const total = JOBS.reduce((s, j) => s + j.weight, 0);
