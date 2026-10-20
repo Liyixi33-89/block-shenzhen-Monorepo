@@ -40,11 +40,14 @@ public class AuthAppService {
         return response(user, tokens.sign(user.id(), user.role()));
     }
 
-    /** 登录：校验通过后旧格式哈希自动升级。 */
+    /** 登录：校验通过后旧格式哈希自动升级；封禁用户拒绝登录。 */
     @Transactional
     public Map<String, Object> login(String username, String password) {
         User user = users.findByUsername(username == null ? "" : username)
                 .orElseThrow(() -> DomainException.unauthorized("invalid credentials"));
+        if (user.isBanned()) {
+            throw DomainException.forbidden("account banned");
+        }
         String raw = password == null ? "" : password;
         if (!encoder.matches(raw, user.passwordHash())) {
             throw DomainException.unauthorized("invalid credentials");

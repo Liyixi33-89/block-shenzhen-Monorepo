@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
   username VARCHAR(64) NOT NULL UNIQUE,
   password_hash VARCHAR(512) NOT NULL,
   role VARCHAR(16) NOT NULL,            -- 'player' | 'admin'
-  created_at VARCHAR(32) NOT NULL
+  created_at VARCHAR(32) NOT NULL,
+  banned TINYINT NOT NULL DEFAULT 0     -- 1 = 封禁（禁止登录）
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS saves (
