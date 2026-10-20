@@ -11,6 +11,50 @@ import { buildRecipeSchema } from './build.ts';
 import { ascensionSchema } from './ascension.ts';
 import { shopItemSchema, investConfigSchema } from './shop.ts';
 
+/** 动态随机 NPC 职业配置（覆盖内置职业池；字段缺省沿用内置对应字段语义） */
+export const npcJobSchema = z.object({
+  /** 职业称呼后缀（如「先生」「同学」） */
+  honorific: z.string().min(1),
+  /** 躯干主色（0xRRGGBB 数字） */
+  body: z.number().int().nonnegative(),
+  /** 帽子颜色 */
+  hat: z.number().int().nonnegative(),
+  /** 随机权重（≥1） */
+  weight: z.number().int().min(1).default(1),
+  /** 正常对白池（每条一句话） */
+  lines: z.array(z.string().min(1)).default([]),
+  /** 雨天对白池（缺省沿用 lines） */
+  rain: z.array(z.string().min(1)).default([]),
+  /** 夜晚对白池（缺省沿用 lines） */
+  night: z.array(z.string().min(1)).default([]),
+  /** 偶发赠予金额（缺省 0 不给） */
+  tip: z.number().int().min(0).default(0),
+  /** 移动小摊商品 id 池（缺省无摊） */
+  stall: z.array(z.string()).default([]),
+});
+export type NpcJobConfig = z.infer<typeof npcJobSchema>;
+
+/** 运行时环境配置（全部可选：缺省 = 引擎内置常量，旧场景零破坏） */
+export const envConfigSchema = z.object({
+  npc: z.object({
+    /** 动态随机 NPC 数量（0 关闭） */
+    dynamicCount: z.number().int().min(0).optional(),
+    /** 随机姓氏池（空/缺省 = 内置 15 个广府姓氏） */
+    surnames: z.array(z.string().min(1)).optional(),
+    /** 职业池（覆盖内置 7 职业；空数组忽略） */
+    jobs: z.array(npcJobSchema).optional(),
+    /** 游走范围（世界坐标） */
+    range: z.object({
+      xMin: z.number(), xMax: z.number(),
+      zMin: z.number(), zMax: z.number(),
+    }).optional(),
+  }).default({}),
+});
+
+export const sceneConfigSchema = z.object({
+  env: envConfigSchema.default({}),
+});
+
 export const sceneSchema = z.object({
   /** 场景 ID：主场景为 'shenzhen-main' */
   id: z.string().regex(/^[a-z][a-z0-9_-]*$/),
@@ -37,6 +81,8 @@ export const sceneSchema = z.object({
   shopItems: z.array(shopItemSchema).default([]),
   /** 地标投资配置（P2 经济：到访过的地标可投资获被动收入） */
   invest: investConfigSchema.optional(),
+  /** 运行时环境配置（缺省 = 引擎内置常量，宽松透传） */
+  config: sceneConfigSchema.default({}),
 });
 
 export type Scene = z.infer<typeof sceneSchema>;
