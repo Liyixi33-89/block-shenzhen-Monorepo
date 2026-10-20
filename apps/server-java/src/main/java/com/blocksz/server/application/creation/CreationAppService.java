@@ -3,6 +3,7 @@ package com.blocksz.server.application.creation;
 import com.blocksz.server.domain.creation.Creation;
 import com.blocksz.server.domain.creation.CreationRepository;
 import com.blocksz.server.domain.shared.DomainException;
+import com.blocksz.server.infrastructure.security.ContentFilter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,17 +12,19 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Creation 用例：发布 / 列表 / 点赞 / 详情导入。 */
+/** Creation 用例：发布 / 列表 / 点赞 / 详情导入（P0：UGC 敏感词过滤）。 */
 @Service
 public class CreationAppService {
 
     private final CreationRepository creations;
+    private final ContentFilter contentFilter;
 
-    public CreationAppService(CreationRepository creations) {
+    public CreationAppService(CreationRepository creations, ContentFilter contentFilter) {
         this.creations = creations;
+        this.contentFilter = contentFilter;
     }
 
-    /** 发布作品（游客身份即可）。 */
+    /** 发布作品（游客身份即可；标题/描述过敏感词）。 */
     @Transactional
     public Map<String, Object> publish(String playerId, String playerName, Map<String, Object> body) {
         Object title = body.get("title");
@@ -32,6 +35,10 @@ public class CreationAppService {
         }
         if (!(title instanceof String t)) {
             throw DomainException.invalid("title must be 2-32 chars");
+        }
+        // P0 内容安全：标题/描述敏感词拦截（命中即拒，返回 400）
+        if (contentFilter.reject(t) || contentFilter.reject(desc instanceof String d ? d : "")) {
+            throw DomainException.invalid("content contains sensitive words");
         }
         Creation c = Creation.publish(playerId, playerName, t,
                 desc instanceof String d ? d : "", placements);

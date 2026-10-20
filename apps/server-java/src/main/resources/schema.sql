@@ -55,3 +55,15 @@ CREATE TABLE IF NOT EXISTS creations (
   created_at VARCHAR(32) NOT NULL,
   INDEX idx_creations_hot (likes DESC, created_at DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- P0 内容审核：UGC 举报（玩家举报 → admin 处理）
+CREATE TABLE IF NOT EXISTS reports (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  target_kind VARCHAR(16) NOT NULL,        -- 'creation' | 'player'
+  target_id VARCHAR(64) NOT NULL,          -- 被举报对象 id
+  reporter_id VARCHAR(64) NOT NULL,        -- 举报人 playerId
+  reason VARCHAR(512) NOT NULL,            -- 举报理由
+  status VARCHAR(16) NOT NULL DEFAULT 'open', -- 'open' | 'resolved' | 'dismissed'
+  created_at VARCHAR(32) NOT NULL,
+  INDEX idx_reports_status (status, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
