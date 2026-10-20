@@ -2,7 +2,7 @@
  "id": "shenzhen-main",
  "name": "方块鹏城 · 深圳主场景",
  "desc": "像素风深圳城市探索：9 区 25 地标、地铁 10 线 18 站、观光巴士、深圳湾游船、梧桐山索道",
- "version": "0.3.7",
+ "version": "0.3.8",
  "projection": {
   "origin": {
    "lat": 22.5431,
@@ -2337,6 +2337,7 @@
     "id": "newcomer",
     "name": "鹏城新客",
     "points": 0,
+    "requires": [],
     "unlocks": []
    },
    {

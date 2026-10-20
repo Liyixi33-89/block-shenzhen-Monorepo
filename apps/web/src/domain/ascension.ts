@@ -24,7 +24,8 @@ export class AscensionSystem {
       for (const s of this.stages) {
         if (reached.has(s.id)) continue;
         if (points < s.points) continue;
-        if (s.requires.some(r => !reached.has(r))) continue;
+        // 容错：旧版本场景数据可能缺 requires 字段（视为无前置）
+        if ((s.requires ?? []).some(r => !reached.has(r))) continue;
         reached.add(s.id);
       }
     }
@@ -38,7 +39,7 @@ export class AscensionSystem {
 
     this.unlocked.clear();
     for (const s of this.stages) {
-      if (reached.has(s.id)) s.unlocks.forEach(u => this.unlocked.add(u as UnlockKey));
+      if (reached.has(s.id)) (s.unlocks ?? []).forEach(u => this.unlocked.add(u as UnlockKey));
     }
     return cur;
   }
@@ -56,7 +57,7 @@ export class AscensionSystem {
   next(): AscensionStage | null {
     const cur = this.current();
     const candidates = this.stages.filter(s =>
-      cur ? s.points > cur.points && s.requires.includes(cur.id) : s.requires.length === 0);
+      cur ? s.points > cur.points && (s.requires ?? []).includes(cur.id) : (s.requires ?? []).length === 0);
     return candidates.sort((a, b) => a.points - b.points)[0] ?? null;
   }
 }
