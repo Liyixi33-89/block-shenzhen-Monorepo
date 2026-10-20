@@ -23,6 +23,7 @@ import { ShopPanel } from './shop';
 import { GalleryPanel } from './gallery';
 import { SouvenirPanel } from './souvenir';
 import { LABEL_HEIGHT } from './builders';
+import type { RoadGraph } from './roadnet';
 import { ensureSession, uploadSave, downloadSave, type CloudSession } from '../services/cloud';
 import { Analytics } from '../services/analytics';
 import { snapshotToSave, saveToInit } from '../services/saveCodec';
@@ -66,6 +67,10 @@ export class GameEngine {
   dayNight: DayNightSystem | null = null;
   weather: WeatherSystem | null = null;
   session: CloudSession | null = null;
+  /** 全城道路图（NPC 游走；无路网为 null） */
+  roadGraph: RoadGraph | null = null;
+  /** 分块流式加载控制器（按玩家位置挂载/卸载街区） */
+  streaming: { update(px: number, pz: number): void } | null = null;
 
   /** API 前缀（dev 由 vite 代理 /api，生产同源部署） */
   get apiBase(): string { return this.opts.apiBase ?? '/api'; }
@@ -157,6 +162,8 @@ export class GameEngine {
         const built = buildWorld(this.sceneData!);
         this.world = built.root;
         worldTick = built.tick;
+        this.roadGraph = built.roadGraph;
+        this.streaming = built.streaming;
         this.three.add(this.world);
         // 昼夜系统接管场景雾/光照/天空句柄
         this.three.fog = built.fog;
@@ -240,6 +247,8 @@ export class GameEngine {
             weatherKind: () => this.weather?.kind ?? 'sunny',
             // 店铺 NPC / 移动小摊购买（复用 Gameplay.buy：扣钱+给物品+美食计数）
             buy: id => this.gameplay?.buy(id) ?? false,
+            // 阶段二：全城道路图（动态 NPC 沿路网节点游走）
+            roadGraph: this.roadGraph,
           });
           this.npc.build();
         }
@@ -580,8 +589,13 @@ export class GameEngine {
 
     worldTick?.(t);
 
-    // P1 角色动画：NPC 浮动微动
-    this.npc?.tick?.(t);
+    // 阶段三：分块流式加载（按玩家位置挂载/卸载街区建筑）
+    if (this.streaming && this.player) {
+      this.streaming.update(this.player.position.x, this.player.position.z);
+    }
+
+    // P1 角色动画：NPC 浮动微动 / 路网游走
+    this.npc?.tick?.(t, dt);
 
     // 日夜循环推进（虚拟时钟）
     this.dayNight?.update(dt);

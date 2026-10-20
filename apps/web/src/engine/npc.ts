@@ -1,9 +1,12 @@
 // NPC 系统：场景包数据驱动 → 世界摆位渲染（方块小人 + 头顶名牌）→ E 键对话面板 → 效果结算
+// 阶段二：动态 NPC 沿道路图游走（navmesh 约束的轻量替代：路网节点随机漫步），
+// 不再原地浮动；游走期间碰撞探测对话半径。
 import * as THREE from 'three';
 import { proj } from '@block-sz/shared';
 import type { Scene, Npc, DialogueNode, NpcJobConfig } from '@block-sz/schema';
 import { iconSvg } from './icons';
 import type { WeatherKind } from './weather';
+import { randomWalkPath, type RoadGraph } from './roadnet';
 
 export interface NpcOptions {
   container: HTMLElement;
@@ -26,6 +29,8 @@ export interface NpcOptions {
   weatherKind?: () => WeatherKind;
   /** 店铺购买：扣钱并给物品（返回是否成功），供店铺 NPC / 移动小摊用 */
   buy?: (itemId: string) => boolean;
+  /** 全城道路图（阶段二：动态 NPC 沿路网游走；缺省原地微动） */
+  roadGraph?: RoadGraph | null;
 }
 
 const TALK_RADIUS = 26;
@@ -39,7 +44,17 @@ interface NpcEntity {
   /** 是否为动态随机 NPC（含职业对白池，入口台词随天气/夜晚变化） */
   dynamic?: boolean;
   job?: JobProfile;
+  /** 阶段二：路网游走状态（沿 path 逐点移动；到达后随机续路） */
+  walkPath?: Array<{ x: number; z: number }>;
+  walkIdx?: number;
+  /** 面向（游走时转身） */
+  facing?: number;
 }
+
+/** 动态 NPC 步速（单位/秒，慢于玩家步行） */
+const NPC_WALK = 7;
+/** 距路径点多少距离算到达 */
+const NPC_ARRIVE = 2.5;
 
 // ---------------------------------------------------------------------------
 // 动态随机 NPC（参考站「方块羊城」特性）：职业加权 + 随机姓氏 + 职业专属对白
@@ -326,15 +341,48 @@ export class NpcSystem {
         latlng: { lat: 0, lng: 0 },
         shopItems,
       };
-      this.entities.push({ npc, group, x, z, dynamic: true, job });
+      // 阶段二：动态 NPC 初始游走路径（沿路网；无路网图则原地微动）
+      const graph = this.opts.roadGraph;
+      const walkPath = graph ? randomWalkPath(graph, { x, z }, 4 + Math.floor(Math.random() * 4)) : undefined;
+      this.entities.push({ npc, group, x, z, dynamic: true, job, walkPath, walkIdx: 0 });
     }
   }
 
-  /** P1 每帧微动：整体轻微上下浮动，营造生机 */
-  tick(t: number) {
+  /** P1 每帧微动：静态 NPC 轻微浮动；动态 NPC 沿路网游走（阶段二） */
+  tick(t: number, dt = 0.016) {
+    const graph = this.opts.roadGraph;
     for (const e of this.entities) {
-      const bob = Math.sin(t * 1.6 + e.x * 0.01 + e.z * 0.01) * 0.35;
-      e.group.position.y = bob;
+      if (e.dynamic && graph && e.walkPath?.length) {
+        // 路网游走：沿路径逐点移动
+        const target = e.walkPath[e.walkIdx ?? 0];
+        if (target) {
+          const dx = target.x - e.x, dz = target.z - e.z;
+          const d = Math.hypot(dx, dz);
+          if (d < NPC_ARRIVE) {
+            // 到达当前路点：推进到下一个；走完随机续路
+            const next = (e.walkIdx ?? 0) + 1;
+            if (next >= e.walkPath.length) {
+              e.walkPath = randomWalkPath(graph, { x: e.x, z: e.z }, 4 + Math.floor(Math.random() * 4));
+              e.walkIdx = 0;
+            } else {
+              e.walkIdx = next;
+            }
+          } else {
+            const step = Math.min(NPC_WALK * dt, d);
+            e.x += (dx / d) * step;
+            e.z += (dz / d) * step;
+            e.facing = Math.atan2(dx, dz);
+          }
+        }
+        e.group.position.set(e.x, 0, e.z);
+        if (e.facing !== undefined) e.group.rotation.y = e.facing;
+        // 行走摆动（腿摆动近似：整体轻微前倾 + 上下浮动）
+        e.group.position.y = Math.abs(Math.sin(t * 8)) * 0.5;
+      } else {
+        // 静态 NPC：原地轻微浮动
+        const bob = Math.sin(t * 1.6 + e.x * 0.01 + e.z * 0.01) * 0.35;
+        e.group.position.y = bob;
+      }
     }
   }
 
