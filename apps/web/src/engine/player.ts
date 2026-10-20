@@ -1,6 +1,8 @@
 // 第三人称玩家控制器：WASD 移动 / 鼠标拖拽转视角 / 滚轮缩放 / Shift 疾跑
+// 阶段二：移动改为「试探移动 + 碰撞响应」（AABB 空间哈希），沿墙滑行而非穿墙。
 import * as THREE from 'three';
 import type { Landmark } from '@block-sz/schema';
+import { collision } from './collision';
 
 export interface PlayerInit {
   x: number;
@@ -12,6 +14,8 @@ const WALK = 26;     // 单位/秒（步行）
 const RUN = 52;      // 疾跑
 const CAM_DIST = 30;
 const CAM_HEIGHT = 16;
+/** 玩家碰撞半径（圆柱近似） */
+const BODY_R = 2.2;
 
 export interface PlayerAPI {
   avatar: THREE.Group;
@@ -139,7 +143,7 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
       keys.clear();
       return;
     }
-    // 移动
+    // 移动（阶段二：试探移动 + 滑动响应，不可穿建筑）
     let mx = 0, mz = 0;
     if (keys.has('w') || keys.has('arrowup')) mz -= 1;
     if (keys.has('s') || keys.has('arrowdown')) mz += 1;
@@ -152,8 +156,9 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
       // W(mz=-1) → 远离相机；D(mx=+1) → 屏幕右
       const dx = (mx * Math.cos(facing) + mz * Math.sin(facing)) / len;
       const dz = (mx * Math.sin(facing) + mz * Math.cos(facing)) / len;
-      position.x += dx * speed * dt;
-      position.z += dz * speed * dt;
+      const moved = collision.move(position.x, position.z, dx * speed * dt, dz * speed * dt, BODY_R);
+      position.x = moved.x;
+      position.z = moved.z;
     }
 
     // P1 角色动画：行走摆臂摆腿 + 身体起伏；闲置微呼吸
@@ -198,9 +203,10 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
     get facing() { return facing; },
     get suspended() { return suspended; },
     set suspended(v: boolean) { suspended = v; },
-    /** 传送到指定世界坐标 */
+    /** 传送到指定世界坐标（碰撞安全：落点若在建筑内则外挪） */
     teleport(x: number, z: number, f?: number) {
-      position.set(x, 0, z);
+      const free = collision.findFreeSpot(x, z, BODY_R);
+      position.set(free.x, 0, free.z);
       if (f !== undefined) facing = f;
       keys.clear();
     },
