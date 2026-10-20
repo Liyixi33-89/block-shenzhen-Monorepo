@@ -87,7 +87,7 @@ const TAB_LABELS: Record<string, string> = {
     <!-- ============ 登录 ============ -->
     <section v-if="tab === 'login'" class="card">
       <h2>管理员登录</h2>
-      <p class="tip">首个注册用户自动成为 admin：先在「注册」接口创建账号（curl /api/auth/register）。</p>
+      <p class="tip">admin 账号：启动时配置邀请码 BSZ_ADMIN_INVITE_CODE，注册时携带 inviteCode 即获 admin（未配置则需 DB 手工改角色）。</p>
       <label>用户名 <input v-model="username" /></label>
       <label>密码 <input v-model="password" type="password" @keyup.enter="login" /></label>
       <button class="primary" @click="login">登录</button>
