@@ -10,12 +10,18 @@ import SpawnEditor from './components/SpawnEditor.vue';
 import TeleportEditor from './components/TeleportEditor.vue';
 import QuestEditor from './components/QuestEditor.vue';
 import DistrictEditor from './components/DistrictEditor.vue';
+import ShopEditor from './components/ShopEditor.vue';
+import NpcEditor from './components/NpcEditor.vue';
+import BuildEditor from './components/BuildEditor.vue';
+import TrafficEditor from './components/TrafficEditor.vue';
+import AscensionEditor from './components/AscensionEditor.vue';
 import AnalyticsPanel from './components/AnalyticsPanel.vue';
+import UsersPanel from './components/UsersPanel.vue';
 import VersionPanel from './components/VersionPanel.vue';
 import JsonEditor from './components/JsonEditor.vue';
 import type { Scene, Landmark, SpawnPoint, TeleportPoint, Quest, District } from '@block-sz/schema';
 
-type Tab = 'login' | 'scene' | 'landmarks' | 'spawns' | 'teleports' | 'quests' | 'districts' | 'analytics' | 'versions' | 'json';
+type Tab = 'login' | 'scene' | 'landmarks' | 'spawns' | 'teleports' | 'quests' | 'districts' | 'shop' | 'npcs' | 'build' | 'traffic' | 'ascension' | 'users' | 'analytics' | 'versions' | 'json';
 const tab = ref<Tab>('login');
 
 // ---- 登录 ----
@@ -60,7 +66,8 @@ function switchTab(t: Tab) {
 
 const TAB_LABELS: Record<string, string> = {
   scene: '场景', landmarks: `地标 ${doc.scene.value?.landmarks.length ?? ''}`, spawns: '出生点',
-  teleports: '传送点', quests: '任务', districts: '区划', analytics: '分析', versions: '版本', json: 'JSON',
+  teleports: '传送点', quests: '任务', districts: '区划', shop: '商店', npcs: 'NPC',
+  build: '建造', traffic: '交通', ascension: '飞升', users: '用户', analytics: '分析', versions: '版本', json: 'JSON',
 };
 </script>
 
@@ -69,7 +76,7 @@ const TAB_LABELS: Record<string, string> = {
     <header>
       <h1>方块鹏城 · 内容管理</h1>
       <nav>
-        <button v-for="t in (['scene','landmarks','spawns','teleports','quests','districts','analytics','versions','json'] as Tab[])"
+        <button v-for="t in (['scene','landmarks','spawns','teleports','quests','districts','shop','npcs','build','traffic','ascension','users','analytics','versions','json'] as Tab[])"
                 :key="t" :class="{ active: tab === t }" @click="switchTab(t)">
           {{ TAB_LABELS[t] }}
         </button>
@@ -120,7 +127,9 @@ const TAB_LABELS: Record<string, string> = {
         </div>
         <p class="tip">元素 {{ doc.scene.value.elements.length }} 个 · 建造配方 {{ doc.scene.value.buildRecipes.length }} 条 · NPC {{ doc.scene.value.npcs.length }} 个
           <span v-if="doc.scene.value.traffic">· 交通 {{ doc.scene.value.traffic.routes.length }} 线 {{ doc.scene.value.traffic.stations.length }} 站</span>
-          （元素/NPC/交通请用 JSON 模式编辑）</p>
+          · 商店 {{ doc.scene.value.shopItems.length }} 件
+          <span v-if="doc.scene.value.ascension">· 飞升 {{ doc.scene.value.ascension.stages.length }} 阶</span>
+          （元素/NPC/交通/商店/飞升均可用对应页签可视化编辑）</p>
       </section>
 
       <!-- ============ 页签组件 ============ -->
@@ -129,6 +138,12 @@ const TAB_LABELS: Record<string, string> = {
       <TeleportEditor v-if="tab === 'teleports'" />
       <QuestEditor v-if="tab === 'quests'" />
       <DistrictEditor v-if="tab === 'districts'" />
+      <ShopEditor v-if="tab === 'shop'" />
+      <NpcEditor v-if="tab === 'npcs'" />
+      <BuildEditor v-if="tab === 'build'" />
+      <TrafficEditor v-if="tab === 'traffic'" />
+      <AscensionEditor v-if="tab === 'ascension'" />
+      <UsersPanel v-if="tab === 'users'" />
       <AnalyticsPanel v-if="tab === 'analytics'" />
       <VersionPanel v-if="tab === 'versions'" />
       <JsonEditor v-if="tab === 'json'" ref="jsonEditor" />
