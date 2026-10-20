@@ -7,6 +7,8 @@ import type { Scene } from '@block-sz/schema';
 import { BUILDERS, LABEL_HEIGHT } from './builders';
 import { buildSky, buildSea, buildLighting, buildDistantHills, type LightingRig } from './atmosphere';
 import { facadeMaterial, groundMaterial } from './textures';
+import { generateRoadNet, buildRoadMesh, type DistrictRoadNet, type RoadGraph, buildRoadGraph } from './roadnet';
+import { collision } from './collision';
 
 /** P2 GLTF 加载器（懒建，复用单例）。路径约定：public/content/models/{sceneId}/{landmarkId}.glb */
 let gltfLoader: GLTFLoader | null = null;
@@ -132,8 +134,8 @@ function labelSprite(text: string, color = '#ffffff', bg = 'rgba(10,20,40,0.75)'
   return sprite;
 }
 
-/** 区块网格：以区中心为圆心的程序化街区 */
-function buildDistrictBlock(d: Scene['districts'][number]): THREE.Group {
+/** 区块：路网网格 + 街区贴边建筑 + 地面（一个区一个组，支持流式开关） */
+function buildDistrictBlock(d: Scene['districts'][number], net: DistrictRoadNet): THREE.Group {
   const g = new THREE.Group();
   const c = proj(d.center.lat, d.center.lng);
   g.position.set(c.x, 0, c.z);
@@ -149,23 +151,66 @@ function buildDistrictBlock(d: Scene['districts'][number]): THREE.Group {
   ground.receiveShadow = true;
   g.add(ground);
 
-  const count = { cbd: 130, urban: 80, suburb: 30, none: 0 }[d.density] ?? 0;
-  let seed = d.id.split('').reduce((a, ch) => a + ch.charCodeAt(0), 7);
-  const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  // 路面（世界坐标已含区中心偏移 → 放到区组局部坐标需减回中心；
+  // 但碰撞注册需要世界坐标，故路网生成时直接用世界坐标传入，路面组也挂世界根。
+  // 这里把路网 mesh 单独返回，由调用方挂世界根并注册碰撞。）
+
+  // ---- 街区贴边建筑（阶段一）：沿地块四边摆放，中间留院落 ----
   const maxH = { cbd: 60, urban: 34, suburb: 14, none: 10 }[d.density] ?? 10;
-  // P2 外立面图集：同色建筑共享窗格贴图（统一 repeat 以保住合并优化）
-  const facade = (tone: number) => facadeMaterial(tone, d.density === 'cbd' ? 3 : 2, seed);
-  for (let i = 0; i < count; i++) {
-    const ang = rnd() * Math.PI * 2;
-    const rr = Math.sqrt(rnd()) * (R - 30);
-    const x = Math.cos(ang) * rr, z = Math.sin(ang) * rr;
-    const h = 6 + rnd() * rnd() * maxH;
-    const w = 10 + rnd() * 14, dp = 10 + rnd() * 14;
-    const tone = [0x6f87a8, 0x7d94b5, 0x5d7494][Math.floor(rnd() * 3)];
-    box(g, x, 1, z, w, h, dp, tone, { facade: facade(tone) });
-    if (h > 30 && rnd() > 0.5) {
-      box(g, x, 1 + h, z, w * 0.4, 4, dp * 0.4, 0xffe9a8, { emissive: 0x332200 });
-    }
+  for (const cell of net.cells) {
+    let seed = cell.seed;
+    const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    // 地块四条边（局部坐标；地块宽深已扣道路半宽）
+    const hw = cell.w / 2, hd = cell.d / 2;
+    // 每边期望楼数：边长 / 平均楼宽(~16)，密度系数打折
+    const perEdge = (len: number) => Math.max(1, Math.round((len / 16) * cell.density));
+    const facade = (tone: number) => facadeMaterial(tone, d.density === 'cbd' ? 3 : 2, seed);
+
+    /** 沿一条边贴边摆楼：位置在边线内缩 halfDepth 处 */
+    const fillEdge = (
+      ax: number, az: number, bx: number, bz: number,   // 边线（地块边）
+      insideX: number, insideZ: number,                  // 内法线方向（指向地块中心）
+    ) => {
+      const edgeLen = Math.hypot(bx - ax, bz - az);
+      const n = perEdge(edgeLen);
+      const step = edgeLen / n;
+      for (let i = 0; i < n; i++) {
+        const t = (i + 0.5) / n;
+        const px = ax + (bx - ax) * t;
+        const pz = az + (bz - az) * t;
+        // 楼宇尺寸：贴边深度 8-14，宽度略小于步长
+        const depth = 8 + rnd() * 6;
+        const w = step * (0.72 + rnd() * 0.2);
+        const h = 6 + rnd() * rnd() * maxH * (0.6 + cell.density * 0.4);
+        // 楼中心 = 边点向内法线方向偏移 depth/2
+        const cx = px + insideX * (depth / 2);
+        const cz = pz + insideZ * (depth / 2);
+        // 边方向（求楼体旋转无关量：贴边楼沿边线走向拉伸宽度）
+        const dirX = (bx - ax) / edgeLen, dirZ = (bz - az) / edgeLen;
+        const tone = [0x6f87a8, 0x7d94b5, 0x5d7494][Math.floor(rnd() * 3)];
+        const m = new THREE.Mesh(boxGeo, facade(tone));
+        // 用 scale 近似沿边拉伸：仅支持轴对齐边（本路网全为轴对齐线）
+        const alongX = Math.abs(dirX) > 0.5;
+        m.scale.set(alongX ? w : depth, h, alongX ? depth : w);
+        m.position.set(cx, 1 + h / 2, cz);
+        g.add(m);
+        // 碰撞注册（世界坐标 = 区中心 + 局部）
+        collision.addBoxCenter(c.x + cx, c.z + cz, alongX ? w : depth, alongX ? depth : w, 1.5);
+        // 高楼屋顶灯箱
+        if (h > 30 && rnd() > 0.5) {
+          const cap = new THREE.Mesh(boxGeo, mat(0xffe9a8, { emissive: 0x332200 }));
+          cap.scale.set((alongX ? w : depth) * 0.4, 4, (alongX ? depth : w) * 0.4);
+          cap.position.set(cx, 1 + h + 2, cz);
+          g.add(cap);
+        }
+      }
+    };
+
+    // 四条边：上边(z=-hd)、下边(z=+hd)、左边(x=-hw)、右边(x=+hw)，内法线指向中心
+    fillEdge(-hw, -hd, hw, -hd, 0, 1);
+    fillEdge(-hw, hd, hw, hd, 0, -1);
+    fillEdge(-hw, -hd, -hw, hd, 1, 0);
+    fillEdge(hw, -hd, hw, hd, -1, 0);
   }
   return g;
 }
@@ -260,6 +305,43 @@ export interface WorldHandle {
   skyMat: THREE.ShaderMaterial;
   /** 场景雾（昼夜循环可调色/浓度） */
   fog: THREE.Fog;
+  /** 全城道路图（NPC 游走用；无路网时为 null） */
+  roadGraph: RoadGraph | null;
+  /** 流式加载控制器：按玩家位置动态挂载/卸载区块（阶段三） */
+  streaming: { update(px: number, pz: number): void };
+}
+
+/**
+ * 阶段三：分块流式加载控制器。
+ * 区块（district building 组 + 地标组）构建完成后先不入场景树，
+ * 按玩家位置与 STREAM_R 距离动态挂载/卸载；路面/地面/交通等轻量组常驻。
+ * 碰撞体不随可视卸载（体积小，保持全局一致性，避免 NPC 穿墙）。
+ */
+const STREAM_R = 2400;   // 挂载半径（含远视距）
+const STREAM_HYST = 600; // 卸载迟滞（防边界抖动）
+
+interface StreamCell {
+  group: THREE.Group;
+  x: number;
+  z: number;
+  loaded: boolean;
+}
+
+function makeStreaming(root: THREE.Group, cells: StreamCell[]) {
+  return {
+    update(px: number, pz: number) {
+      for (const c of cells) {
+        const d = Math.hypot(c.x - px, c.z - pz);
+        if (!c.loaded && d < STREAM_R) {
+          root.add(c.group);
+          c.loaded = true;
+        } else if (c.loaded && d > STREAM_R + STREAM_HYST) {
+          root.remove(c.group);
+          c.loaded = false;
+        }
+      }
+    },
+  };
 }
 
 /** 主构建入口 */
@@ -287,11 +369,25 @@ export function buildWorld(scene: Scene): WorldHandle {
   ground.receiveShadow = true;
   root.add(ground);
 
-  // 区块
+  // 区块：路网生成（世界坐标）→ 贴边建筑（局部坐标）→ 路面渲染 → 流式区块
+  const nets: DistrictRoadNet[] = [];
+  const streamCells: StreamCell[] = [];
   for (const d of scene.districts) {
-    const blk = buildDistrictBlock(d);
+    const c = proj(d.center.lat, d.center.lng);
+    // 路网在世界坐标下生成（含区中心偏移），路面组直接挂世界根
+    const net = generateRoadNet({
+      id: d.id, cx: c.x, cz: c.z, radius: d.cityRadius, density: d.density,
+    });
+    if (net.segs.length) {
+      nets.push(net);
+      const roadMesh = buildRoadMesh(net);
+      root.add(roadMesh);
+    }
+    // 街区建筑组（局部坐标，挂区中心）
+    const blk = buildDistrictBlock(d, net);
     mergeStaticGroup(blk);
-    root.add(blk);
+    // 阶段三：街区建筑按区流式挂载（近城常驻，远城卸载）
+    streamCells.push({ group: blk, x: c.x, z: c.z, loaded: false });
   }
 
   // 地标（P2：优先加载真实 GLTF 低模，缺失则降级到程序化 builder）
@@ -310,6 +406,8 @@ export function buildWorld(scene: Scene): WorldHandle {
     } else {
       built = box(lmGroup, 0, 0, 0, 26, 22, 20, 0xb8c4d0);
     }
+    // 地标碰撞体（世界坐标；玩家不可穿楼）——按地标包围盒近似（24x24 底面）
+    collision.addBoxCenter(p.x, p.z, 24, 24, 6);
     // 加载成功后替换为真实模型（异步完成后替换组内容）
     loadLandmarkModel(scene.id, l.id).then(gltf => {
       if (!gltf || !built) return; // 无资源 → 保留程序化 fallback
@@ -335,19 +433,31 @@ export function buildWorld(scene: Scene): WorldHandle {
     root.add(lmGroup);
   }
 
-  // 出生点传送门（几何合并）
+  // 出生点传送门（几何合并；门柱注册碰撞，光圈/光柱不注册）
   for (const sp of scene.spawnPoints) {
     const portal = buildSpawnPortal(sp);
     mergeStaticGroup(portal);
     root.add(portal);
+    const pp = proj(sp.latlng.lat, sp.latlng.lng);
+    collision.addBoxCenter(pp.x, pp.z, 24, 12, 0); // 门框横向两根
   }
 
-  // 交通
-  root.add(buildTraffic(scene));
+  // 交通（站亭注册碰撞；站间距大，常驻渲染）
+  const traffic = buildTraffic(scene);
+  root.add(traffic);
+  if (scene.traffic) {
+    for (const s of scene.traffic.stations) {
+      const p = proj(s.latlng.lat, s.latlng.lng);
+      collision.addBoxCenter(p.x, p.z, 11, 11, 0); // 玻璃方亭 8x8 + 扶梯
+    }
+  }
 
   // 光照
   const lighting = buildLighting();
   root.add(lighting.group);
+
+  // 全城道路图（NPC 游走；无路网则 null）
+  const roadGraph = nets.length ? buildRoadGraph(nets) : null;
 
   return {
     root,
@@ -355,5 +465,7 @@ export function buildWorld(scene: Scene): WorldHandle {
     lighting,
     skyMat: sky.mat,
     fog: new THREE.Fog(0xbfd4e6, 1200, 5600),
+    roadGraph,
+    streaming: makeStreaming(root, streamCells),
   };
 }
