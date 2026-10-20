@@ -20,9 +20,9 @@ export async function ensureSession(): Promise<CloudSession> {
       return { token, playerId, name: data.user?.username ?? playerId };
     }
   }
-  // 新游客：随机账号注册
+  // 新游客：随机账号注册（密码满足复杂度：≥8 位且含字母+数字，防被新策略 422）
   const uname = 'guest_' + Math.random().toString(36).slice(2, 8);
-  const pwd = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  const pwd = 'Gz' + Math.random().toString(36).slice(2, 10) + '7k';
   const { ok, status, data } = await request('/api/auth/register', {
     method: 'POST',
     body: { username: uname, password: pwd },
