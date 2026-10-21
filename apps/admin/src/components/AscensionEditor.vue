@@ -8,9 +8,9 @@ const { doc } = inject(ADMIN_CTX)!;
 const scene = doc.scene;
 const touch = doc.touch;
 
-const UNLOCKS = ['build', 'teleport', 'fly', 'metroPass', 'photoPro'];
+const UNLOCKS = ['build', 'teleport', 'fly'];
 const UNLOCK_LABELS: Record<string, string> = {
-  build: '建造', teleport: '传送', fly: '飞行', metroPass: '地铁通票', photoPro: '专业相机',
+  build: '建造', teleport: '传送', fly: '飞行',
 };
 
 const selStageId = ref('');

@@ -1,7 +1,7 @@
 // 飞升系统：ascensionPoints 累计 → 阶段判定 → 能力解锁开关（build/teleport/fly 等）
 import type { Scene, AscensionStage } from '@block-sz/schema';
 
-export type UnlockKey = 'build' | 'teleport' | 'fly' | 'metroPass' | 'photoPro';
+export type UnlockKey = 'build' | 'teleport' | 'fly';
 
 export class AscensionSystem {
   private stages: AscensionStage[];
