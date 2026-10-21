@@ -1,6 +1,6 @@
 // 路由表：登录页与后台内容完全分离；守卫拦截未认证访问
 import { createRouter, createWebHashHistory } from 'vue-router';
-import { isAuthenticated } from '../stores/auth';
+import { isAuthenticated, restoreSession } from '../stores/auth';
 import AdminLayout from '../views/AdminLayout.vue';
 import LoginView from '../views/LoginView.vue';
 
@@ -45,8 +45,9 @@ export const router = createRouter({
   routes,
 });
 
-// 全局守卫：未登录 → /login；已登录访问 /login → /scene
-router.beforeEach((to) => {
+// 全局守卫：先恢复 cookie 会话，未登录 → /login；已登录访问 /login → /scene
+router.beforeEach(async (to) => {
+  await restoreSession();
   if (to.name !== 'login' && !isAuthenticated.value) return { name: 'login' };
   if (to.name === 'login' && isAuthenticated.value) return { path: '/scene' };
   return true;
