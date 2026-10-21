@@ -1,10 +1,7 @@
 <script setup lang="ts">
 // 版本管理页签：灰度滑杆 / 回滚锁定 / 版本 diff（DOM 契约：input[type=range]/.diff-controls select）
-import { ref, inject } from 'vue';
-import { ADMIN_CTX } from '../context';
+import { ref } from 'vue';
 import { adminFetch } from '../services/api';
-
-const { token } = inject(ADMIN_CTX)!;
 
 const rollout = ref<{ pinnedVersion: string; grayPercent: number }>({ pinnedVersion: '', grayPercent: 100 });
 const rolloutVersions = ref<string[]>([]);
@@ -17,9 +14,7 @@ const diffTo = ref('');
 const rolloutMsg = ref('');
 
 async function loadRollout() {
-  const { data: r } = await adminFetch('/api/content/admin/scenes/shenzhen-main/rollout', {
-    token: token.value,
-  });
+  const { data: r } = await adminFetch('/api/content/admin/scenes/shenzhen-main/rollout');
   rollout.value = r.rollout;
   rolloutVersions.value = r.versions ?? [];
   rolloutLatest.value = r.latest ?? '';
@@ -36,7 +31,6 @@ async function applyGray() {
   const { data: r } = await adminFetch('/api/content/admin/scenes/shenzhen-main/rollout/gray', {
     method: 'POST',
     body: { percent: grayPct.value },
-    token: token.value,
   });
   rolloutMsg.value = r.ok ? `灰度已设为 ${grayPct.value}%` : `失败: ${r.error}`;
   await loadRollout();
@@ -47,7 +41,6 @@ async function applyPin() {
   const { data: r } = await adminFetch('/api/content/admin/scenes/shenzhen-main/rollout/pin', {
     method: 'POST',
     body: { version: pinTarget.value },
-    token: token.value,
   });
   rolloutMsg.value = r.ok
     ? (pinTarget.value ? `已回滚锁定 v${pinTarget.value}` : '已取消锁定，恢复最新版')
@@ -58,14 +51,12 @@ async function applyPin() {
 async function loadDiff() {
   diffData.value = [];
   if (!diffFrom.value || !diffTo.value || diffFrom.value === diffTo.value) return;
-  const { data: r } = await adminFetch(`/api/content/admin/scenes/shenzhen-main/diff?from=${diffFrom.value}&to=${diffTo.value}`, {
-    token: token.value,
-  });
+  const { data: r } = await adminFetch(`/api/content/admin/scenes/shenzhen-main/diff?from=${diffFrom.value}&to=${diffTo.value}`);
   diffData.value = r.diff ?? [];
 }
 
 /** 首次切入页签时自动加载 */
-if (token.value) void loadRollout();
+void loadRollout();
 </script>
 
 <template>

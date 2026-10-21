@@ -10,14 +10,14 @@ import type { RouteMeta } from '../router';
 
 const route = useRoute();
 const router = useRouter();
-const { token, user, logout } = useAuth();
+const { user, logout } = useAuth();
 
 // ---- 场景文档（provide 给各路由组件）----
 const doc = useSceneDoc();
-provide(ADMIN_CTX, { doc, token });
+provide(ADMIN_CTX, { doc });
 
-// 登录态下进入布局即加载场景
-void doc.loadScene(token.value);
+// 守卫已恢复会话，布局挂载即加载场景
+void doc.loadScene();
 
 // JSON 路由切入时同步场景文本
 const jsonEditor = ref<InstanceType<typeof JsonEditor> | null>(null);
@@ -78,9 +78,9 @@ const NAV_ITEMS: { name: string; label: string }[] = [
       <span v-if="doc.sceneVersion.value" class="ver">线上 v{{ doc.sceneVersion.value }}</span>
       <span v-if="doc.scene.value">草稿 v{{ doc.scene.value.version }}</span>
       <span class="spacer"></span>
-      <button class="primary" @click="doc.saveDraft(token)">保存草稿</button>
-      <button @click="doc.publish(token)">发布新版本</button>
-      <button @click="doc.loadScene(token)">放弃修改（重载）</button>
+      <button class="primary" @click="doc.saveDraft()">保存草稿</button>
+      <button @click="doc.publish()">发布新版本</button>
+      <button @click="doc.loadScene()">放弃修改（重载）</button>
     </div>
     <p v-if="doc.draftSaved.value" class="ok">{{ doc.draftSaved.value }}</p>
     <p v-if="doc.publishMsg.value" :class="doc.publishMsg.value.includes('失败') ? 'bad' : 'ok'">{{ doc.publishMsg.value }}</p>

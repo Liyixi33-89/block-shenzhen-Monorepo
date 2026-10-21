@@ -1,10 +1,7 @@
 <script setup lang="ts">
 // 数据分析页签：DAU / 漏斗 / 事件表（DOM 类名契约：.dau-bar/.funnel-step/.ana-table）
-import { ref, computed, inject } from 'vue';
-import { ADMIN_CTX } from '../context';
+import { ref, computed } from 'vue';
 import { adminFetch } from '../services/api';
-
-const { token } = inject(ADMIN_CTX)!;
 
 const anaDays = ref(7);
 const anaEvents = ref<any[]>([]);
@@ -13,12 +10,11 @@ const anaFunnel = ref<any[]>([]);
 const anaLoaded = ref(false);
 
 async function loadAnalytics() {
-  const headers = { token: token.value };
   const days = anaDays.value;
   const [ov, dau, fn] = await Promise.all([
-    adminFetch(`/api/analytics/admin/overview?days=${days}`, headers).then(r => r.data),
-    adminFetch(`/api/analytics/admin/dau?days=${days}`, headers).then(r => r.data),
-    adminFetch(`/api/analytics/admin/funnel?steps=session_start,visit,photo,quest_done`, headers).then(r => r.data),
+    adminFetch(`/api/analytics/admin/overview?days=${days}`).then(r => r.data),
+    adminFetch(`/api/analytics/admin/dau?days=${days}`).then(r => r.data),
+    adminFetch(`/api/analytics/admin/funnel?steps=session_start,visit,photo,quest_done`).then(r => r.data),
   ]);
   anaEvents.value = ov.events ?? [];
   anaDau.value = dau.dau ?? [];
@@ -27,7 +23,7 @@ async function loadAnalytics() {
 }
 
 /** 首次切入页签时自动加载 */
-if (token.value) void loadAnalytics();
+void loadAnalytics();
 
 const maxDau = computed(() => Math.max(1, ...anaDau.value.map((d: any) => d.n)));
 

@@ -1,6 +1,6 @@
 // 场景文档状态：加载 / 草稿 / 发布 / 脏标记 —— 结构化编辑的唯一数据源
-// 【composable 视图层逻辑】App.vue 壳 provide，各页签组件 inject 使用
-import { ref, computed } from 'vue';
+// 【composable 视图层逻辑】AdminLayout provide，各路由组件 inject 使用
+import { ref } from 'vue';
 import type { Ref } from 'vue';
 import type { Scene } from '@block-sz/schema';
 import { adminFetch } from '../services/api';
@@ -12,9 +12,9 @@ export interface SceneDoc {
   publishMsg: Ref<string>;
   issues: Ref<string[]>;
   dirty: Ref<boolean>;
-  loadScene: (token: string) => Promise<void>;
-  saveDraft: (token: string) => Promise<void>;
-  publish: (token: string) => Promise<void>;
+  loadScene: () => Promise<void>;
+  saveDraft: () => Promise<void>;
+  publish: () => Promise<void>;
   /** 任意字段修改 → dirty（模板里统一 @input） */
   touch: () => void;
 }
@@ -29,8 +29,8 @@ export function useSceneDoc(): SceneDoc {
   const issues = ref<string[]>([]);
   const dirty = ref(false);
 
-  async function loadScene(token: string) {
-    const { ok, data } = await adminFetch(`/api/content/scenes/${SCENE_ID}`, { token });
+  async function loadScene() {
+    const { ok, data } = await adminFetch(`/api/content/scenes/${SCENE_ID}`);
     if (ok) {
       scene.value = data.scene;
       sceneVersion.value = data.version;
@@ -38,13 +38,12 @@ export function useSceneDoc(): SceneDoc {
   }
 
   /** 保存草稿（Schema 校验） */
-  async function saveDraft(token: string) {
+  async function saveDraft() {
     draftSaved.value = '';
     issues.value = [];
     const { ok, data } = await adminFetch(`/api/content/admin/scenes/${SCENE_ID}`, {
       method: 'PUT',
       body: scene.value,
-      token,
     });
     if (!ok) {
       issues.value = (data.issues || []).map((i: any) => `${i.path}: ${i.message}`).concat(data.error || []);
@@ -61,17 +60,16 @@ export function useSceneDoc(): SceneDoc {
     scene.value.version = `${a}.${b}.${c + 1}`;
   }
 
-  async function publish(token: string) {
+  async function publish() {
     publishMsg.value = '';
     bumpPatch();
-    await saveDraft(token);
+    await saveDraft();
     if (issues.value.length) {
       publishMsg.value = '发布失败：草稿校验未通过';
       return;
     }
     const { ok, data } = await adminFetch(`/api/content/admin/scenes/${SCENE_ID}/publish`, {
       method: 'POST',
-      token,
     });
     publishMsg.value = ok ? `发布成功 v${data.published}` : `发布失败: ${data.error}`;
     if (ok) sceneVersion.value = data.published;

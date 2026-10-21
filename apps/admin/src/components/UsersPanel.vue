@@ -1,10 +1,7 @@
 <script setup lang="ts">
 // 用户管理页签：列表/搜索 + 角色变更 + 封禁/解封（DOM 类名契约：.ana-table/.item-list）
-import { ref, inject } from 'vue';
-import { ADMIN_CTX } from '../context';
+import { ref } from 'vue';
 import { adminFetch } from '../services/api';
-
-const { token } = inject(ADMIN_CTX)!;
 
 interface AdminUser {
   id: string;
@@ -25,7 +22,6 @@ async function load() {
   msg.value = '';
   const { ok, data } = await adminFetch(
     `/api/admin/users?keyword=${encodeURIComponent(keyword.value)}&limit=50`,
-    { token: token.value },
   );
   loading.value = false;
   if (!ok) {
@@ -37,11 +33,11 @@ async function load() {
 }
 
 /** 首次切入页签时自动加载 */
-if (token.value) void load();
+void load();
 
 async function changeRole(u: AdminUser, role: string) {
   const { ok, data } = await adminFetch(`/api/admin/users/${u.id}/role`, {
-    method: 'PUT', body: { role }, token: token.value,
+    method: 'PUT', body: { role },
   });
   if (!ok) {
     msg.value = (data as any)?.error || '角色变更失败';
@@ -55,7 +51,7 @@ async function toggleBan(u: AdminUser) {
   const to = !u.banned;
   if (to && !confirm(`封禁「${u.username}」？封禁后该账号无法登录。`)) return;
   const { ok, data } = await adminFetch(`/api/admin/users/${u.id}/ban`, {
-    method: 'PUT', body: { banned: to }, token: token.value,
+    method: 'PUT', body: { banned: to },
   });
   if (!ok) {
     msg.value = (data as any)?.error || '操作失败';
