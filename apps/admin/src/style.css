@@ -110,3 +110,25 @@ button.danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; 
 .diff-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .diff-controls select { width: 160px; }
 @media (max-width: 720px) { .ver-grid { grid-template-columns: 1fr; } }
+
+/* ============================================================
+   登录页（独立路由视图）
+   ============================================================ */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0f766e 0%, #134e4a 55%, #1e293b 100%);
+}
+.login-card {
+  width: 360px;
+  padding: 36px 32px;
+  text-align: center;
+}
+.login-title { font-size: 1.6rem; margin-bottom: 4px; color: #0f766e; }
+.login-sub { color: #64748b; font-size: 0.9em; margin-bottom: 20px; }
+.login-card label { text-align: left; }
+.login-card button[type="submit"] { width: 100%; margin-top: 14px; padding: 10px; font-size: 0.95rem; }
+.login-card .bad { margin-top: 10px; }
+.user-box { color: #475569; font-size: 0.85em; }
