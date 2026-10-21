@@ -1,5 +1,6 @@
 // 第三人称玩家控制器：WASD 移动 / 鼠标拖拽转视角 / 滚轮缩放 / Shift 疾跑
 // 阶段二：移动改为「试探移动 + 碰撞响应」（AABB 空间哈希），沿墙滑行而非穿墙。
+// 飞升 fly 解锁：flightMode 空中自由飞行（Space 升 / Ctrl 降），落地自动退出。
 import * as THREE from 'three';
 import type { Landmark } from '@block-sz/schema';
 import { collision } from './collision';
@@ -12,6 +13,10 @@ export interface PlayerInit {
 
 const WALK = 26;     // 单位/秒（步行）
 const RUN = 52;      // 疾跑
+const FLY = 70;      // 飞行速度
+const FLY_VERT = 40; // 升降速度
+const FLY_MIN_Y = 12;   // 最低巡航高度（地面之上）
+const FLY_MAX_Y = 260;  // 最高巡航高度
 const CAM_DIST = 30;
 const CAM_HEIGHT = 16;
 /** 玩家碰撞半径（圆柱近似） */
@@ -26,6 +31,12 @@ export interface PlayerAPI {
   suspended: boolean;
   /** 观景台登顶俯瞰模式：active 时冻结地面移动，相机绕塔顶环视俯瞰 */
   deckMode(active: boolean, x?: number, z?: number, height?: number): void;
+  /** 飞行模式（飞升 fly 解锁）：on 时空中自由飞行，Space 升 / Ctrl 降 */
+  flightMode(on: boolean): void;
+  /** 速度加成（speed 道具效果）：>1 时移动速度倍增 */
+  speedBoost: number;
+  /** 飞行模式是否激活（只读） */
+  readonly flying: boolean;
   update(dt: number, _landmarks: Landmark[]): void;
   dispose(): void;
   teleport(x: number, z: number, f?: number): void;
@@ -44,6 +55,10 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
   let dragging = false, lastX = 0, lastY = 0;
   // 观景台俯瞰相机（登顶时非空：{塔顶x,z,height}）
   let deckCam: { x: number; z: number; height: number } | null = null;
+  // 飞行模式（飞升 fly 解锁）：非 0 时 position.y 在空中，无碰撞
+  let flying = false;
+  // 速度加成倍率（speed 道具效果，由引擎每帧注入）
+  let speedBoost = 1;
 
   // 玩家化身：像素小人（方块身体 + 头 + 可摆动四肢）
   // P1：四肢做成独立 pivot，行走时摆动、奔跑加速、闲置微呼吸
@@ -98,7 +113,7 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
 
   function onKey(e: KeyboardEvent, down: boolean) {
     const k = e.key.toLowerCase();
-    if (['w', 'a', 's', 'd', 'e', 'shift', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) {
+    if (['w', 'a', 's', 'd', 'e', 'shift', ' ', 'control', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) {
       keys.delete(k); if (down) keys.add(k);
       e.preventDefault();
     }
@@ -143,13 +158,51 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
       keys.clear();
       return;
     }
-    // 移动（阶段二：试探移动 + 滑动响应，不可穿建筑）
+    // 方向输入（地面/飞行共用）
     let mx = 0, mz = 0;
     if (keys.has('w') || keys.has('arrowup')) mz -= 1;
     if (keys.has('s') || keys.has('arrowdown')) mz += 1;
     if (keys.has('a') || keys.has('arrowleft')) mx -= 1;
     if (keys.has('d') || keys.has('arrowright')) mx += 1;
-    const speed = keys.has('shift') ? RUN : WALK;
+
+    // ---- 飞行模式（飞升 fly 解锁）：空中自由移动，Space 升 / Ctrl 降 ----
+    if (flying) {
+      const spd = FLY * speedBoost;
+      const dx = (mx * Math.cos(facing) + mz * Math.sin(facing));
+      const dz = (mx * Math.sin(facing) + mz * Math.cos(facing));
+      const len = Math.hypot(dx, dz) || 1;
+      position.x += dx / len * Math.abs(mx || mz) * spd * dt;
+      position.z += dz / len * Math.abs(mx || mz) * spd * dt;
+      let vy = 0;
+      if (keys.has(' ')) vy += FLY_VERT;
+      if (keys.has('control')) vy -= FLY_VERT;
+      position.y = THREE.MathUtils.clamp(position.y + vy * dt, 0, FLY_MAX_Y);
+      // 降到地面自动退出飞行
+      if (position.y <= 0) {
+        position.y = 0;
+        flying = false;
+      }
+      moving = !!(mx || mz || vy);
+      // 四肢平展滑翔姿态
+      walkPhase += dt * 6;
+      const s = Math.sin(walkPhase);
+      armL.rotation.x = -1.4; armR.rotation.x = -1.4;   // 双臂后掠
+      legL.rotation.x = s * 0.12; legR.rotation.x = -s * 0.12;
+      body.position.y = 3.2;
+      head.position.y = 6.5;
+      // 相机跟随（更高更远，看向空中化身）
+      const fcx = position.x + Math.sin(facing) * camDist * Math.cos(camPitch);
+      const fcz = position.z + Math.cos(facing) * camDist * Math.cos(camPitch);
+      const fcy = position.y + CAM_HEIGHT + camDist * Math.sin(camPitch);
+      camera.position.lerp(new THREE.Vector3(fcx, fcy, fcz), 0.12);
+      camera.lookAt(position.x, position.y + 6, position.z);
+      avatar.position.set(position.x, position.y, position.z);
+      avatar.rotation.y = facing + Math.PI;
+      return;
+    }
+
+    // 移动（阶段二：试探移动 + 滑动响应，不可穿建筑；speed 道具效果加成）
+    const speed = (keys.has('shift') ? RUN : WALK) * speedBoost;
     if (mx || mz) {
       const len = Math.hypot(mx, mz);
       // 相机在玩家 (sin f, cos f) 方向身后：前进 = -(sin f, cos f)，右移 = (cos f, sin f)
@@ -232,5 +285,21 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
       }
       keys.clear();
     },
+    /** 飞行模式：on 时升空（进入即抬升到巡航高度），落地自动退出 */
+    flightMode(on: boolean) {
+      flying = on;
+      if (on) {
+        position.y = Math.max(position.y, FLY_MIN_Y);
+        suspended = false;   // 飞行中保持可控（不受乘车挂起影响恢复态）
+        avatar.position.set(position.x, position.y, position.z);
+      } else {
+        position.y = 0;
+      }
+      keys.clear();
+    },
+    /** 速度加成倍率（speed 道具）：引擎每帧注入 */
+    set speedBoost(v: number) { speedBoost = v; },
+    get speedBoost() { return speedBoost; },
+    get flying() { return flying; },
   };
 }

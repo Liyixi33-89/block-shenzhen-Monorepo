@@ -380,6 +380,10 @@ export class GameEngine {
       // 自拍模式切换（举起相机后）
       this.photoMode.toggleSelfie();
       this.pushToast(this.photoMode.selfie ? '自拍模式开启' : '自拍模式关闭');
+    } else if (k === 'v' && this.player && this.ascension?.has('fly') && !this.photoMode?.active && !this.player.flying) {
+      // 飞升 fly 解锁：V 键起飞（落地自动退出，飞行中再按无效防抖）
+      this.player.flightMode(true);
+      this.pushToast('起飞！Space 上升 · Ctrl 下降 · 降至地面自动降落');
     } else if (k === 's' && this.shop && this.player && !this.photoMode?.active) {
       // P2 商店/投资面板（拍照模式时不抢占）
       this.shop.toggle();
@@ -625,6 +629,8 @@ export class GameEngine {
     const riding = this.transit?.riding ?? false;
 
     if (this.player && this.gameplay && !riding) {
+      // speed 道具效果：移动速度 ×1.5（飞行同步加成）
+      this.player.speedBoost = this.gameplay.hasEffect('speed') ? 1.5 : 1;
       this.player.update(dt, this.sceneData?.landmarks ?? []);
       const pos = this.player.position;
       this.state.pos.x = Math.round(pos.x);
