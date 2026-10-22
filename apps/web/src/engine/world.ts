@@ -218,12 +218,22 @@ function buildDistrictBlock(d: Scene['districts'][number], net: DistrictRoadNet)
         g.add(m);
         // 碰撞注册（世界坐标 = 区中心 + 局部）
         collision.addBoxCenter(c.x + cx, c.z + cz, alongX ? w : depth, alongX ? depth : w, 1.5);
-        // 高楼屋顶灯箱
+        // 高楼屋顶灯箱 / 霓虹招牌
         if (h > 30 && rnd() > 0.5) {
           const cap = new THREE.Mesh(boxGeo, mat(0xffe9a8, { emissive: 0x332200 }));
           cap.scale.set((alongX ? w : depth) * 0.4, 4, (alongX ? depth : w) * 0.4);
           cap.position.set(cx, 1 + h + 2, cz);
           g.add(cap);
+        }
+        // 临街霓虹招牌：CBD/urban 部分高楼侧面挂发光灯箱（夜间点亮，白天弱自发光）
+        if (h > 22 && rnd() > 0.55) {
+          const neon = [0xff5a6a, 0x5ad0ff, 0xffd75a, 0x7af0c0][Math.floor(rnd() * 4)];
+          const sign = new THREE.Mesh(boxGeo, mat(neon, { emissive: neon }));
+          const sx = alongX ? 1 : 0, sz = alongX ? 0 : 1; // 挂在外立面一侧
+          const sh = 2.6;
+          sign.scale.set(alongX ? depth * 0.6 : sh, sh, alongX ? sh : depth * 0.6);
+          sign.position.set(cx + sx * (alongX ? w / 2 + 0.3 : 0), 1 + h * 0.55, cz + sz * (alongX ? 0 : w / 2 + 0.3));
+          g.add(sign);
         }
       }
     };
@@ -274,6 +284,118 @@ function buildSpawnPortal(sp: Scene['spawnPoints'][number]): THREE.Group {
   return g;
 }
 
+// ---- 街道家具共享几何（跨区复用，mergeStaticGroup 按材质合并，draw call 极低） ----
+// 树/路灯等街道家具几何，与 boxGeo 一样 markShared 登记，dispose 时保留复用。
+const TREE_TRUNK = markSharedGeo(new THREE.CylinderGeometry(0.35, 0.55, 2.6, 5));
+const TREE_CROWN_SPHERE = markSharedGeo(new THREE.SphereGeometry(2.3, 7, 6));
+const TREE_CROWN_CONE = markSharedGeo(new THREE.ConeGeometry(2.6, 4.6, 7));
+const LAMP_POLE = markSharedGeo(new THREE.CylinderGeometry(0.28, 0.4, 9, 6));
+const LAMP_HEAD = markSharedGeo(new THREE.BoxGeometry(1.6, 0.5, 0.9));
+
+/** 树/路灯/招牌的简单随机（复用 LCG，seed 由函数入参决定） */
+function furnitureRnd(seed: number) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+/**
+ * 行道树：沿路网线段两侧成排布置（树干 + 树冠），远看成林，近看错落。
+ * 每段路按长度均分，树落在距路中心 halfW+2.2 的路缘位置，两侧交错以破机械感。
+ */
+function buildStreetTrees(nets: DistrictRoadNet[]): THREE.Group {
+  const g = new THREE.Group();
+  const trunkMat = mat(0x5a4632);
+  const crownMats = [mat(0x2f7d4f), mat(0x3a8a5a), mat(0x2a6f45)]; // 三档绿增强自然感
+  let seed = 7;
+  const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  let count = 0;
+
+  const TREE_SPACING = 46;   // 沿路间距（世界单位）
+  for (const net of nets) {
+    for (const s of net.segs) {
+      const len = Math.hypot(s.x2 - s.x1, s.z2 - s.z1);
+      const n = Math.max(0, Math.floor(len / TREE_SPACING) - 1); // 两端留空给路口
+      if (n <= 0) continue;
+      const ux = (s.x2 - s.x1) / len, uz = (s.z2 - s.z1) / len;
+      // 垂直于道路的两侧法线
+      const nx = -uz, nz = ux;
+      const off = s.halfW + 2.2; // 树心落在路缘外
+      for (let i = 1; i <= n; i++) {
+        const t = i / (n + 1);
+        const alongX = s.x1 + ux * len * t, alongZ = s.z1 + uz * len * t;
+        // 两侧交错：奇偶棵树轮流站边
+        const side = (i + Math.floor((s.x1 + s.z1) / 20)) % 2 === 0 ? 1 : -1;
+        const px = alongX + nx * off * side;
+        const pz = alongZ + nz * off * side;
+        // 轻微随机错落，避免纯直线
+        const jx = (rnd() - 0.5) * 4, jz = (rnd() - 0.5) * 4;
+        const tree = new THREE.Group();
+        tree.position.set(px + jx, 0, pz + jz);
+        const trunk = new THREE.Mesh(TREE_TRUNK, trunkMat);
+        trunk.position.y = 1.3;
+        tree.add(trunk);
+        // 树冠：球/锥交替 + 轻微缩放
+        const crown = rnd() > 0.5
+          ? new THREE.Mesh(TREE_CROWN_SPHERE, crownMats[Math.floor(rnd() * crownMats.length)])
+          : new THREE.Mesh(TREE_CROWN_CONE, crownMats[Math.floor(rnd() * crownMats.length)]);
+        crown.position.y = 2.6 + rnd() * 1.2;
+        crown.scale.set(1, 1 + rnd() * 0.4, 1);
+        crown.castShadow = true;
+        tree.add(crown);
+        g.add(tree);
+        count++;
+      }
+    }
+  }
+  if (count > 0) mergeStaticGroup(g); // 按材质合并，极低 draw call
+  return g;
+}
+
+/**
+ * 路灯：沿主干道两侧布置，灯头发光（夜间由昼夜系统点亮，白天柔和自发光）。
+ * 间距比行道树稀疏，避免遮挡；灯柱注册轻量碰撞。
+ */
+function buildStreetLamps(nets: DistrictRoadNet[]): THREE.Group {
+  const g = new THREE.Group();
+  const poleMat = mat(0x33404d);
+  // 灯头：昼夜可调 emissive，先用弱自发光做常态（夜间增强交给 atmosphere）
+  const lampMat = markSharedMat(new THREE.MeshStandardMaterial({ color: 0xd8ecff, emissive: 0x8a6a2a, emissiveIntensity: 0.4 }));
+  let count = 0;
+  const LAMP_SPACING = 90;   // 主干道间距
+  for (const net of nets) {
+    for (const s of net.segs) {
+      if (!s.major) continue; // 只沿主干道设灯
+      const len = Math.hypot(s.x2 - s.x1, s.z2 - s.z1);
+      const n = Math.max(0, Math.floor(len / LAMP_SPACING));
+      if (n <= 0) continue;
+      const ux = (s.x2 - s.x1) / len, uz = (s.z2 - s.z1) / len;
+      const nx = -uz, nz = ux;
+      for (let i = 0; i < n; i++) {
+        const t = (i + 0.5) / n;
+        const alongX = s.x1 + ux * len * t, alongZ = s.z1 + uz * len * t;
+        const side = i % 2 === 0 ? 1 : -1;
+        const px = alongX + nx * (s.halfW + 1.2) * side;
+        const pz = alongZ + nz * (s.halfW + 1.2) * side;
+        const lamp = new THREE.Group();
+        lamp.position.set(px, 0, pz);
+        const pole = new THREE.Mesh(LAMP_POLE, poleMat);
+        pole.position.y = 4.5;
+        lamp.add(pole);
+        const head = new THREE.Mesh(LAMP_HEAD, lampMat);
+        head.position.y = 9.2;
+        head.position.x = nx * side * 0.6; // 灯头偏向路边
+        head.castShadow = false;
+        lamp.add(head);
+        g.add(lamp);
+        count++;
+      }
+    }
+  }
+  if (count > 0) mergeStaticGroup(g);
+  return g;
+}
+
 /** 交通线路：站点块 + 线路连线 */
 function buildTraffic(scene: Scene): THREE.Group {
   const g = new THREE.Group();
@@ -318,6 +440,91 @@ function buildTraffic(scene: Scene): THREE.Group {
     }
   }
   return g;
+}
+
+// ---- 车流（动态车辆：沿主干道行驶，让街道"活"起来） ----
+// 车辆是动态实体（每帧移动），不能用 mergeStaticGroup；但几何/材质全局共享，
+// 单 mesh 多实例（instance）仍可由引擎合并渲染，数量控制在每区 4 辆左右。
+const CAR_BODY = markSharedGeo(new THREE.BoxGeometry(4.6, 1.3, 2.2));
+const CAR_CABIN = markSharedGeo(new THREE.BoxGeometry(2.2, 0.8, 1.9));
+const CAR_WHEEL = markSharedGeo(new THREE.CylinderGeometry(0.42, 0.42, 0.3, 8));
+
+interface CarEntity {
+  mesh: THREE.Group;
+  x1: number; z1: number;   // 线段起点
+  x2: number; z2: number;   // 线段终点
+  t: number;                // 0..1 沿线进度
+  dir: 1 | -1;              // 行驶方向
+  speed: number;            // 单位/秒
+}
+
+/**
+ * 构建车流：在每个区的路网主干道上撒车，绑定一条线段往返行驶。
+ * 返回 { group, update }：group 入场景树，update 每帧推进车辆位置。
+ */
+function buildVehicles(nets: DistrictRoadNet[]): { group: THREE.Group; update: (t: number) => void } {
+  const group = new THREE.Group();
+  const cars: CarEntity[] = [];
+  const bodyMats = [0xd8dde4, 0x8fb0c8, 0xc84f3a, 0x3a6ea8, 0xe0b94a].map(c => mat(c));
+  const cabinMat = mat(0x1a2a3a);
+  const wheelMat = mat(0x11161c);
+  let seed = 21;
+  const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+
+  const CAR_PER_DISTRICT = 4;   // 每区主干道车辆数
+  for (const net of nets) {
+    // 收集本区主干道（优先较长线段，减少原地打转）
+    const majors = net.segs.filter(s => s.major && Math.hypot(s.x2 - s.x1, s.z2 - s.z1) > 60);
+    if (!majors.length) continue;
+    const budget = Math.min(CAR_PER_DISTRICT, majors.length * 2);
+    for (let k = 0; k < budget; k++) {
+      const s = majors[k % majors.length];
+      const color = bodyMats[Math.floor(rnd() * bodyMats.length)];
+      const mesh = new THREE.Group();
+      const body = new THREE.Mesh(CAR_BODY, color);
+      body.position.y = 1.25;
+      body.castShadow = true;
+      mesh.add(body);
+      const cabin = new THREE.Mesh(CAR_CABIN, cabinMat);
+      cabin.position.y = 2.0;
+      mesh.add(cabin);
+      // 四轮
+      for (const [wx, wz] of [[1.6, 0.9], [1.6, -0.9], [-1.6, 0.9], [-1.6, -0.9]]) {
+        const wheel = new THREE.Mesh(CAR_WHEEL, wheelMat);
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(wx, 0.4, wz);
+        mesh.add(wheel);
+      }
+      group.add(mesh);
+      // 随机进度与方向
+      cars.push({
+        mesh, x1: s.x1, z1: s.z1, x2: s.x2, z2: s.z2,
+        t: rnd(),
+        dir: rnd() > 0.5 ? 1 : -1,
+        speed: 16 + rnd() * 10, // 略慢于玩家步行(26)，让玩家能追上
+      });
+    }
+  }
+
+  let lastT = 0;
+  function update(t: number) {
+    if (!lastT) { lastT = t; return; }
+    let dt = (t - lastT) / 1000;
+    lastT = t;
+    if (dt > 0.1) dt = 0.1; // clamp 防跳帧
+    for (const c of cars) {
+      c.t += c.dir * (c.speed * dt) / Math.hypot(c.x2 - c.x1, c.z2 - c.z1);
+      if (c.t > 1) { c.t = 1; c.dir = -1; }      // 到终点反向
+      else if (c.t < 0) { c.t = 0; c.dir = 1; }  // 到起点反向
+      const x = c.x1 + (c.x2 - c.x1) * c.t;
+      const z = c.z1 + (c.z2 - c.z1) * c.t;
+      c.mesh.position.set(x, 0, z);
+      // 朝向：沿行驶方向
+      const fx = c.x2 - c.x1, fz = c.z2 - c.z1;
+      c.mesh.rotation.y = c.dir === 1 ? Math.atan2(fx, fz) : Math.atan2(-fx, -fz);
+    }
+  }
+  return { group, update };
 }
 
 /** 世界构建结果：root 场景组 + 每帧 tick + 氛围句柄（昼夜/天气可调） */
@@ -420,6 +627,14 @@ export function buildWorld(scene: Scene): WorldHandle {
     streamCells.push({ group: blk, x: c.x, z: c.z, loaded: false });
   }
 
+  // 街道家具：行道树 + 路灯（沿全部路网线段，静态合并，常驻渲染）
+  if (nets.length) {
+    const trees = buildStreetTrees(nets);
+    if (trees.children.length) root.add(trees);
+    const lamps = buildStreetLamps(nets);
+    if (lamps.children.length) root.add(lamps);
+  }
+
   // 地标（P2：优先加载真实 GLTF 低模，缺失则降级到程序化 builder）
   for (const l of scene.landmarks) {
     const lmGroup = new THREE.Group();
@@ -480,6 +695,13 @@ export function buildWorld(scene: Scene): WorldHandle {
       const p = proj(s.latlng.lat, s.latlng.lng);
       collision.addBoxCenter(p.x, p.z, 11, 11, 0); // 玻璃方亭 8x8 + 扶梯
     }
+  }
+
+  // 车流（动态车辆沿主干道行驶，让街道"活"起来）
+  const vehicles = nets.length ? buildVehicles(nets) : null;
+  if (vehicles && vehicles.group.children.length) {
+    root.add(vehicles.group);
+    ticks.push(vehicles.update);
   }
 
   // 光照
