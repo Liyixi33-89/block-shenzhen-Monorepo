@@ -181,6 +181,9 @@ export class TransitSystem {
 
   get panelOpen() { return this.panelStation !== null; }
 
+  /** 乘车前的场景雾引用（到站恢复；昼夜系统持有同一对象，不可丢） */
+  private savedFog: THREE.Fog | THREE.FogExp2 | null = null;
+
   // ---------------- 乘车动画 ----------------
   private startRide(route: Route, from: Station, to: Station) {
     const idxA = route.stations.indexOf(from.id);
@@ -198,7 +201,8 @@ export class TransitSystem {
     this.phase = 'riding';
     this.onPhaseChange?.('riding');
 
-    // 隧道环境：乘车期间罩一层暗色穹顶雾
+    // 隧道环境：乘车期间罩一层暗色穹顶雾（保留原雾引用，到站恢复）
+    this.savedFog = this.scene3.fog;
     this.scene3.fog = new THREE.Fog(0x0a1420, 60, 320);
     this.scene3.background = new THREE.Color(0x0a1420);
   }
@@ -254,8 +258,9 @@ export class TransitSystem {
     const dest = ride.stops[ride.stops.length - 1];
     const destPos = this.stationPos.get(dest.st.id)!;
 
-    // 恢复世界外观
-    this.scene3.fog = new THREE.Fog(0xbfd4e6, 1200, 5600);
+    // 恢复世界外观（还原乘车前雾对象，保持昼夜系统持有的引用有效）
+    this.scene3.fog = this.savedFog ?? new THREE.Fog(0xbfd4e6, 1200, 5600);
+    this.savedFog = null;
     this.scene3.background = null;
 
     // 玩家落到目的站

@@ -63,7 +63,17 @@ export interface LightingRig {
   sun: THREE.DirectionalLight;
   hemi: THREE.HemisphereLight;
   fill: THREE.DirectionalLight;
+  /**
+   * 阴影相机跟随玩家：主光 + 目标平移同一偏移，保持方向不变。
+   * 阴影覆盖范围固定 ±SHADOW_SPAN，随玩家移动 → 近景阴影密度大幅提升。
+   */
+  followShadow(x: number, z: number): void;
 }
+
+/** 阴影相机半覆盖范围（跟随玩家，600 单位内高清投影） */
+const SHADOW_SPAN = 600;
+/** 主光相对目标的位置偏移（保持原光照方向） */
+const SUN_OFFSET = new THREE.Vector3(500, 800, 350);
 
 export function buildLighting(): LightingRig {
   const g = new THREE.Group();
@@ -72,23 +82,34 @@ export function buildLighting(): LightingRig {
   g.add(hemi);
   // 主日光（略偏暖，投软阴影）
   const sun = new THREE.DirectionalLight(0xfff0d0, 2.0);
-  sun.position.set(500, 800, 350);
+  sun.position.copy(SUN_OFFSET);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.near = 1;
   sun.shadow.camera.far = 2200;
-  // 阴影覆盖范围：以主城为核心 ±1200 单位
-  sun.shadow.camera.left = -1200;
-  sun.shadow.camera.right = 1200;
-  sun.shadow.camera.top = 1200;
-  sun.shadow.camera.bottom = -1200;
+  // 阴影覆盖：跟随玩家的 ±SHADOW_SPAN 方块（2048 贴图 → 每单位 ≈1.7 像素）
+  sun.shadow.camera.left = -SHADOW_SPAN;
+  sun.shadow.camera.right = SHADOW_SPAN;
+  sun.shadow.camera.top = SHADOW_SPAN;
+  sun.shadow.camera.bottom = -SHADOW_SPAN;
   sun.shadow.bias = -0.0005;
+  // 目标物必须在场景树内，阴影相机才会跟随其位置
+  const sunTarget = new THREE.Object3D();
+  g.add(sunTarget);
+  sun.target = sunTarget;
   g.add(sun);
   // 补光（弱冷光，暗部提蓝）
   const fill = new THREE.DirectionalLight(0x88a8ff, 0.28);
   fill.position.set(-400, 300, -350);
   g.add(fill);
-  return { group: g, sun, hemi, fill };
+
+  function followShadow(x: number, z: number) {
+    // 目标点与主光同步平移，保持光照方向恒定
+    sunTarget.position.set(x, 0, z);
+    sun.position.set(x + SUN_OFFSET.x, SUN_OFFSET.y, z + SUN_OFFSET.z);
+  }
+
+  return { group: g, sun, hemi, fill, followShadow };
 }
 
 /** 远山剪影环（深圳郊野远景） */

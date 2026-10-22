@@ -9,6 +9,7 @@ import { buildSky, buildSea, buildLighting, buildDistantHills, type LightingRig 
 import { facadeMaterial, groundMaterial } from './textures';
 import { generateRoadNet, buildRoadMesh, type DistrictRoadNet, type RoadGraph, buildRoadGraph } from './roadnet';
 import { collision } from './collision';
+import { markSharedGeo, markSharedMat, disposeObjectAssets } from './assets';
 
 /** P2 GLTF 加载器（懒建，复用单例）。路径约定：public/content/models/{sceneId}/{landmarkId}.glb */
 let gltfLoader: GLTFLoader | null = null;
@@ -85,13 +86,16 @@ function mergeStaticGroup(g: THREE.Object3D) {
   }
 }
 
+// ---- 共享资源：boxGeo 与 matCache 材质跨世界复用，dispose 时跳过 ----
+// 注：boxGeo 的共享登记在其声明之后（避免 TDZ）
+
 /** 程序化建筑材质缓存（按颜色，P0 升级为物理材质以呈现光影质感） */
 const matCache = new Map<string, THREE.MeshStandardMaterial>();
 function mat(color: number, opts: { emissive?: number } = {}) {
   const key = color + ':' + (opts.emissive ?? 0);
   let m = matCache.get(key);
   if (!m) {
-    m = new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.05 });
+    m = markSharedMat(new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.05 }));
     if (opts.emissive) m.emissive = new THREE.Color(opts.emissive);
     matCache.set(key, m);
   }
@@ -99,6 +103,7 @@ function mat(color: number, opts: { emissive?: number } = {}) {
 }
 
 const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+markSharedGeo(boxGeo);
 
 function box(
   parent: THREE.Object3D,
@@ -309,6 +314,8 @@ export interface WorldHandle {
   roadGraph: RoadGraph | null;
   /** 流式加载控制器：按玩家位置动态挂载/卸载区块（阶段三） */
   streaming: { update(px: number, pz: number): void };
+  /** 释放本世界独占的 GPU 资源（共享几何/材质/贴图保留，供重入复用） */
+  dispose(): void;
 }
 
 /**
@@ -346,6 +353,9 @@ function makeStreaming(root: THREE.Group, cells: StreamCell[]) {
 
 /** 主构建入口 */
 export function buildWorld(scene: Scene): WorldHandle {
+  // 重建世界前清空全局碰撞体（引擎可反复进出，避免碰撞盒无限累积）
+  collision.clear();
+
   const root = new THREE.Group();
   const ticks: Array<(t: number) => void> = [];
 
@@ -467,5 +477,12 @@ export function buildWorld(scene: Scene): WorldHandle {
     fog: new THREE.Fog(0xbfd4e6, 1200, 5600),
     roadGraph,
     streaming: makeStreaming(root, streamCells),
+    dispose() {
+      disposeObjectAssets(root);
+      // 流式卸载中的区块不在 root 树下，需单独释放
+      for (const c of streamCells) if (!c.loaded) disposeObjectAssets(c.group);
+      streamCells.length = 0;
+      ticks.length = 0;
+    },
   };
 }

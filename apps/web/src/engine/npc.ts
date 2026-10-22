@@ -7,6 +7,7 @@ import type { Scene, Npc, DialogueNode, NpcJobConfig } from '@block-sz/schema';
 import { iconSvg } from './icons';
 import type { WeatherKind } from './weather';
 import { randomWalkPath, type RoadGraph } from './roadnet';
+import { markSharedGeo, markSharedMat } from './assets';
 
 export interface NpcOptions {
   container: HTMLElement;
@@ -55,6 +56,23 @@ interface NpcEntity {
 const NPC_WALK = 7;
 /** 距路径点多少距离算到达 */
 const NPC_ARRIVE = 2.5;
+
+// ---- NPC 共享资源：几何体全局单一实例，材质按颜色缓存（数十个 NPC 共享） ----
+// 标记为 shared：即使未来 dispose 范围扩大到全场景，也不会误释放这些缓存资源。
+const NPC_GEO = {
+  body: markSharedGeo(new THREE.BoxGeometry(6, 8, 4)),
+  head: markSharedGeo(new THREE.BoxGeometry(5, 5, 5)),
+  hat: markSharedGeo(new THREE.BoxGeometry(6, 1.6, 6)),
+};
+const npcMatCache = new Map<number, THREE.MeshStandardMaterial>();
+function npcMat(color: number): THREE.MeshStandardMaterial {
+  let m = npcMatCache.get(color);
+  if (!m) {
+    m = markSharedMat(new THREE.MeshStandardMaterial({ color, roughness: 0.7 }));
+    npcMatCache.set(color, m);
+  }
+  return m;
+}
 
 // ---------------------------------------------------------------------------
 // 动态随机 NPC（参考站「方块羊城」特性）：职业加权 + 随机姓氏 + 职业专属对白
@@ -207,7 +225,6 @@ export class NpcSystem {
 
   /** 世界构建后调用：生成 NPC 实体 */
   build() {
-    const mat = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7 });
     for (const npc of this.opts.data.npcs) {
       if (!npc.enabled) continue;
       // 位置：地标旁 或 直接坐标
@@ -223,18 +240,7 @@ export class NpcSystem {
         x = p.x; z = p.z;
       } else continue;
 
-      const g = new THREE.Group();
-      // 身体（方块小人：躯干 + 头 + 帽子）
-      const body = new THREE.Mesh(new THREE.BoxGeometry(6, 8, 4), mat(0x1c4a6e));
-      body.position.y = 4;
-      const head = new THREE.Mesh(new THREE.BoxGeometry(5, 5, 5), mat(0xffd9a0));
-      head.position.y = 10.5;
-      const hat = new THREE.Mesh(new THREE.BoxGeometry(6, 1.6, 6), mat(0xe8c050));
-      hat.position.y = 13.3;
-      body.castShadow = true;
-      head.castShadow = true;
-      hat.castShadow = true;
-      g.add(body, head, hat);
+      const g = this.makeBody(0x1c4a6e, 0xe8c050);
 
       // 头顶名牌（Canvas Sprite）
       g.add(this.nameSprite(npc.name));
@@ -253,13 +259,13 @@ export class NpcSystem {
 
   /** 构建方块小人（身体 + 头 + 帽子），供静态/动态 NPC 共用 */
   private makeBody(bodyColor: number, hatColor: number): THREE.Group {
-    const mat = (c: number) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7 });
     const g = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(6, 8, 4), mat(bodyColor));
+    // 几何体全局共享（同一形状无需每个 NPC 新建）
+    const body = new THREE.Mesh(NPC_GEO.body, npcMat(bodyColor));
     body.position.y = 4;
-    const head = new THREE.Mesh(new THREE.BoxGeometry(5, 5, 5), mat(0xffd9a0));
+    const head = new THREE.Mesh(NPC_GEO.head, npcMat(0xffd9a0));
     head.position.y = 10.5;
-    const hat = new THREE.Mesh(new THREE.BoxGeometry(6, 1.6, 6), mat(hatColor));
+    const hat = new THREE.Mesh(NPC_GEO.hat, npcMat(hatColor));
     hat.position.y = 13.3;
     body.castShadow = true;
     head.castShadow = true;
@@ -576,7 +582,17 @@ export class NpcSystem {
     this.closePanel();
     this.panel.remove();
     window.removeEventListener('keydown', this.onKey);
-    for (const e of this.entities) this.opts.scene3.remove(e.group);
+    for (const e of this.entities) {
+      // 名牌 Sprite 的 Canvas 贴图独占，需显式释放；几何体/材质是全局共享的不动
+      e.group.traverse(o => {
+        const s = o as THREE.Sprite;
+        if ((s as any).isSprite && s.material?.map) {
+          s.material.map.dispose();
+          s.material.dispose();
+        }
+      });
+      this.opts.scene3.remove(e.group);
+    }
     this.entities = [];
   }
 }

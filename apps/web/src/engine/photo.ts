@@ -13,6 +13,11 @@ export interface PhotoHit {
 export interface PhotoExtras {
   isNight: () => boolean;
   noteSelfie: () => void;
+  /**
+   * 遮挡检测：从相机到地标采样点的射线是否被建筑挡住。
+   * 返回 true 表示被遮挡（不计入镜）。缺省不检测（兼容旧调用）。
+   */
+  isOccluded?: (from: THREE.Vector3, to: THREE.Vector3) => boolean;
 }
 
 export class PhotoMode {
@@ -125,6 +130,12 @@ export class PhotoMode {
         if (dot < 0.55) continue;                       // 视野前方窄锥（约 56°）
         const angle = Math.acos(THREE.MathUtils.clamp(dot, -1, 1));
         if (angle > fovHalf * 1.35) continue;           // 接近实际 FOV
+
+        // 遮挡检测：采样点被建筑挡住则跳过（任一采样点可见即算入镜）
+        if (this.extras.isOccluded) {
+          const target = new THREE.Vector3(p.x, sy, p.z);
+          if (this.extras.isOccluded(camPos, target)) continue;
+        }
 
         const coverage = THREE.MathUtils.clamp(1 - dist / 1200, 0.08, 1);
         if (best === null || coverage > best) best = coverage;

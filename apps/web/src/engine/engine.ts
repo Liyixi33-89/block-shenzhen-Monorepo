@@ -23,6 +23,7 @@ import { ShopPanel } from './shop';
 import { GalleryPanel } from './gallery';
 import { SouvenirPanel } from './souvenir';
 import { LABEL_HEIGHT } from './builders';
+import type { LightingRig } from './atmosphere';
 import type { RoadGraph } from './roadnet';
 import { ensureSession, uploadSave, downloadSave, type CloudSession } from '../services/cloud';
 import { Analytics } from '../services/analytics';
@@ -71,6 +72,10 @@ export class GameEngine {
   roadGraph: RoadGraph | null = null;
   /** 分块流式加载控制器（按玩家位置挂载/卸载街区） */
   streaming: { update(px: number, pz: number): void } | null = null;
+  /** 光照句柄（阴影相机跟随玩家） */
+  lightingRig: LightingRig | null = null;
+  /** 世界句柄（dispose 时释放独占 GPU 资源） */
+  worldHandle: { dispose(): void } | null = null;
 
   /** API 前缀（dev 由 vite 代理 /api，生产同源部署） */
   get apiBase(): string { return this.opts.apiBase ?? '/api'; }
@@ -81,6 +86,8 @@ export class GameEngine {
   private disposed = false;
   private saveTimer: number | undefined;
   private lastPos = { x: 0, z: 0 };
+  /** 阴影相机最近一次跟随位置（位移超过阈值才更新） */
+  private shadowPos = { x: 0, z: 0 };
   /** 启动宽限：首秒内的事件不进 toast（回档 visit 的时序噪声） */
   private graceUntil = 0;
   /** 节流累加器（此前是未声明的动态属性，tsc 存量错误来源） */
@@ -164,6 +171,8 @@ export class GameEngine {
         worldTick = built.tick;
         this.roadGraph = built.roadGraph;
         this.streaming = built.streaming;
+        this.lightingRig = built.lighting;
+        this.worldHandle = built;
         this.three.add(this.world);
         // 昼夜系统接管场景雾/光照/天空句柄
         this.three.fog = built.fog;
@@ -188,6 +197,9 @@ export class GameEngine {
         }
         this.three.add(this.player.avatar);
         this.lastPos = { x: sx, z: sz };
+        // 阴影相机初位对齐出生点（否则玩家出生在远处时身边无阴影）
+        this.shadowPos = { x: sx, z: sz };
+        built.lighting.followShadow(sx, sz);
         this.loadedPhases.add('world');
         return;
       }
@@ -209,6 +221,8 @@ export class GameEngine {
           // 自拍模式：由引擎查询昼夜供夜间自拍判定
           isNight: () => this.dayNight?.isNight() ?? false,
           noteSelfie: () => this.gameplay?.noteSelfie(),
+          // 遮挡检测：相机→地标采样点射线是否被世界几何挡住（仅快门时调用一次）
+          isOccluded: (from, to) => this.isOccluded(from, to),
         });
 
         // 天气系统（雨/雪粒子 + HUD 天气角标）
@@ -399,6 +413,32 @@ export class GameEngine {
       this.photoMode.shoot(this.camera);
     }
   };
+
+  /**
+   * 遮挡检测：相机 → 目标点射线是否被实体建筑挡住（拍照入镜判定用）。
+   * 只检测世界静态建筑（world 组），排除透明装饰（光圈/光柱/名牌）。
+   */
+  private occluderRay = new THREE.Raycaster();
+
+  private isOccluded(from: THREE.Vector3, to: THREE.Vector3): boolean {
+    if (!this.world) return false;
+    // 每次快门现收集：流式加载会挂载/卸载区块，缓存会失效（快门频率低，可接受）
+    const list: THREE.Mesh[] = [];
+    this.world.traverse(o => {
+      const m = o as THREE.Mesh;
+      if (!(m as any).isMesh || (m as any).isSprite) return;
+      const mat = m.material as THREE.Material & { transparent?: boolean };
+      if (mat?.transparent) return;   // 光圈/光柱等透明装饰不算遮挡
+      list.push(m);
+    });
+    const dir = new THREE.Vector3().subVectors(to, from);
+    const dist = dir.length();
+    if (dist < 1) return false;
+    dir.divideScalar(dist);
+    this.occluderRay.set(from, dir);
+    this.occluderRay.far = dist - 4;   // 留出目标点自身厚度余量
+    return this.occluderRay.intersectObjects(list, false).length > 0;
+  }
 
   /** 飞升重评估：拍照/任务加点后调用，跨阶段时提示 + 动态解锁系统 */
   private recheckAscension() {
@@ -596,6 +636,12 @@ export class GameEngine {
     // 阶段三：分块流式加载（按玩家位置挂载/卸载街区建筑）
     if (this.streaming && this.player) {
       this.streaming.update(this.player.position.x, this.player.position.z);
+      // 阴影相机跟随玩家：位移超过阈值才更新（避免逐帧抖动导致阴影边缘闪烁）
+      const px = this.player.position.x, pz = this.player.position.z;
+      if (Math.hypot(px - this.shadowPos.x, pz - this.shadowPos.z) > 120) {
+        this.shadowPos = { x: px, z: pz };
+        this.lightingRig?.followShadow(px, pz);
+      }
     }
 
     // P1 角色动画：NPC 浮动微动 / 路网游走
@@ -686,6 +732,9 @@ export class GameEngine {
     this.analytics?.dispose();
     this.unsubs.forEach(off => off());
     void this.saveNow();   // 退出前存档
+    // 释放世界独占的 GPU 资源（共享几何/材质/贴图保留复用）
+    this.worldHandle?.dispose();
+    this.worldHandle = null;
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }

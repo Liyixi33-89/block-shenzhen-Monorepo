@@ -3,6 +3,7 @@
 // - 地面砖石/草地纹理 + 法线贴图
 // 全部按缓存复用，避免重复创建。
 import * as THREE from 'three';
+import { markSharedTex, markSharedMat } from './assets';
 
 const texCache = new Map<string, THREE.Texture>();
 const normalCache = new Map<string, THREE.Texture>();
@@ -121,31 +122,36 @@ function drawGroundNormal(w: number, h: number, seed: number): HTMLCanvasElement
   return cv;
 }
 
+const matCache = new Map<string, THREE.MeshStandardMaterial>();
+
 /**
  * 建筑外立面材质（按基色 + repeat 缓存，保合并优化）。
  * 返回带窗格 map 与 normalMap 的标准材质。
  */
 export function facadeMaterial(baseColor: number, repeat: number, seed = 7): THREE.MeshStandardMaterial {
   const key = `fac:${baseColor}:${repeat}`;
+  const cached = matCache.get(key);
+  if (cached) return cached;
   let tex = texCache.get(key);
   let norm = normalCache.get(key);
   if (!tex) {
     const hex = '#' + baseColor.toString(16).padStart(6, '0');
     const W = 96, H = 128;
-    tex = toTexture(drawFacade(hex, W, H, seed));
+    tex = markSharedTex(toTexture(drawFacade(hex, W, H, seed)));
     tex.repeat.set(repeat, Math.max(1, Math.floor(repeat * 1.4)));
     texCache.set(key, tex);
-    norm = toTexture(drawFacadeNormal(W, H), false);
+    norm = markSharedTex(toTexture(drawFacadeNormal(W, H), false));
     norm.repeat.set(repeat, Math.max(1, Math.floor(repeat * 1.4)));
     normalCache.set(key, norm);
   }
-  const m = new THREE.MeshStandardMaterial({
+  const m = markSharedMat(new THREE.MeshStandardMaterial({
     color: 0xffffff,
     map: tex,
-    normalMap: norm,
+    normalMap: norm!,
     roughness: 0.85,
     metalness: 0.05,
-  });
+  }));
+  matCache.set(key, m);
   return m;
 }
 
@@ -154,22 +160,26 @@ export function facadeMaterial(baseColor: number, repeat: number, seed = 7): THR
  */
 export function groundMaterial(type: 'grass' | 'stone' | 'soil', repeat: number, seed = 3): THREE.MeshStandardMaterial {
   const key = `grnd:${type}:${repeat}`;
+  const cached = matCache.get(key);
+  if (cached) return cached;
   let tex = texCache.get(key);
   let norm = normalCache.get(key);
   if (!tex) {
     const W = 128, H = 128;
-    tex = toTexture(drawGround(type, W, H, seed));
+    tex = markSharedTex(toTexture(drawGround(type, W, H, seed)));
     tex.repeat.set(repeat, repeat);
     texCache.set(key, tex);
-    norm = toTexture(drawGroundNormal(W, H, seed + 1), false);
+    norm = markSharedTex(toTexture(drawGroundNormal(W, H, seed + 1), false));
     norm.repeat.set(repeat, repeat);
     normalCache.set(key, norm);
   }
-  return new THREE.MeshStandardMaterial({
+  const m = markSharedMat(new THREE.MeshStandardMaterial({
     color: 0xffffff,
     map: tex,
-    normalMap: norm,
+    normalMap: norm!,
     roughness: 1,
     metalness: 0,
-  });
+  }));
+  matCache.set(key, m);
+  return m;
 }

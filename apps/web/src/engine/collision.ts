@@ -85,6 +85,12 @@ export class CollisionWorld {
 
   private scratch: AABB[] = [];
 
+  /** 清空全部碰撞体（重建世界前调用，避免重入游戏时无限累积） */
+  clear() {
+    this.buckets.clear();
+    this.boxCount = 0;
+  }
+
   /**
    * 试探移动 + 滑动响应：从 (x,z) 移动 (dx,dz)，返回修正后的新位置。
    * 1) 完整位移可行 → 直达；
