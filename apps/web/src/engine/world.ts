@@ -667,14 +667,13 @@ export function buildWorld(scene: Scene): WorldHandle {
     mergeStaticGroup(blk);
     // 阶段三：街区建筑按区流式挂载（近城常驻，远城卸载）
     streamCells.push({ group: blk, x: c.x, z: c.z, loaded: false });
-  }
 
-  // 街道家具：行道树 + 路灯（沿全部路网线段，静态合并，常驻渲染）
-  if (nets.length) {
-    const trees = buildStreetTrees(nets);
-    if (trees.children.length) root.add(trees);
-    const lamps = buildStreetLamps(nets);
-    if (lamps.children.length) root.add(lamps);
+    // 街道家具：行道树 + 路灯（沿本区路网，静态合并）
+    // 按区独立合并并随建筑流式挂载，使合并 mesh 包围盒只覆盖本区 → 远区可视锥剔除/卸载
+    const trees = buildStreetTrees([net]);
+    if (trees.children.length) streamCells.push({ group: trees, x: c.x, z: c.z, loaded: false });
+    const lamps = buildStreetLamps([net]);
+    if (lamps.children.length) streamCells.push({ group: lamps, x: c.x, z: c.z, loaded: false });
   }
 
   // 地标（P2：优先加载真实 GLTF 低模，缺失则降级到程序化 builder）
