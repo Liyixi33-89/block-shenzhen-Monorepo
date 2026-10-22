@@ -249,6 +249,15 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
     window.removeEventListener('mousemove', onMove);
     window.removeEventListener('mouseup', onUp);
     window.removeEventListener('wheel', onWheel);
+    // 释放化身独占的几何/材质（每次 createPlayer 新建，重入游戏须释放防 GPU 泄漏）
+    avatar.traverse(o => {
+      const m = o as THREE.Mesh;
+      if ((m as any).isMesh) {
+        m.geometry.dispose();
+        (m.material as THREE.Material).dispose();
+      }
+    });
+    avatar.removeFromParent();
   }
 
   return {

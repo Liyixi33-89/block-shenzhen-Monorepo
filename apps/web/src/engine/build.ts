@@ -480,6 +480,21 @@ export class BuildMode {
     this.hint.remove();
     this.opts.container.removeEventListener('pointerdown', this.onPointerDown);
     window.removeEventListener('keydown', this.onKeyDown);
+    // 释放放置/预览几何材质：几何缓存（含 sign 自定义材质贴图）+ 材质缓存
+    for (const geo of this.geoCache.values()) {
+      const customMat = geo.userData.customMat as THREE.Material | undefined;
+      if (customMat) {
+        (customMat as THREE.MeshBasicMaterial).map?.dispose();
+        customMat.dispose();
+      }
+      geo.dispose();
+    }
+    this.geoCache.clear();
+    for (const m of this.matCache.values()) m.dispose();
+    this.matCache.clear();
+    this.ghostMat.dispose();
+    this.ring.geometry.dispose();
+    (this.ring.material as THREE.Material).dispose();
     this.opts.scene3.remove(this.placedGroup);
     this.opts.scene3.remove(this.ring);
   }

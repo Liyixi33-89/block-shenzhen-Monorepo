@@ -618,6 +618,8 @@ export class GameEngine {
     this.buildMode?.dispose();
     this.teleport?.dispose();
     this.npc?.dispose();
+    this.player?.dispose();   // 移除事件监听 + 释放化身 GPU 资源
+    this.player = null;
     this.tutorial?.dispose();
     this.touch?.dispose();
     this.shop?.dispose();
