@@ -29,6 +29,10 @@ import { ensureSession, uploadSave, downloadSave, type CloudSession } from '../s
 import { Analytics } from '../services/analytics';
 import { snapshotToSave, saveToInit } from '../services/saveCodec';
 import { createBuildMode, createTeleport, type SystemContext } from './factories';
+import { isOccluded as isOccludedMesh } from './occlusion';
+import { DeckController } from './deck';
+import { mountKeymap } from './keymap';
+import { stepFrame, type MainloopRuntime } from './mainloop';
 
 export interface EngineOptions {
   container: HTMLElement;
@@ -61,10 +65,8 @@ export class GameEngine {
   shop: ShopPanel | null = null;
   gallery: GalleryPanel | null = null;
   souvenir: SouvenirPanel | null = null;
-  /** 当前登顶的观景台地标（非空 = 俯瞰模式） */
-  deckLandmark: Landmark | null = null;
-  /** 登顶前玩家位置（下塔时恢复） */
-  deckReturn: { x: number; z: number } | null = null;
+  /** 观景台登顶控制器（E 键登顶/下塔状态机） */
+  deck: DeckController | null = null;
   dayNight: DayNightSystem | null = null;
   weather: WeatherSystem | null = null;
   session: CloudSession | null = null;
@@ -90,13 +92,19 @@ export class GameEngine {
   private shadowPos = { x: 0, z: 0 };
   /** 启动宽限：首秒内的事件不进 toast（回档 visit 的时序噪声） */
   private graceUntil = 0;
-  /** 节流累加器（此前是未声明的动态属性，tsc 存量错误来源） */
-  private tpRefreshAcc = 0;
-  private investAcc = 0;
+  /** 节流累加器（包装为对象，mainloop 原地修改以保持引用同步） */
+  private tpRefreshAcc = { v: 0 };
+  private investAcc = { v: 0 };
+  private fpsAcc = { v: 0 };
+  private fpsFrames = { v: 0 };
+  /** 主循环每帧推进的运行时上下文（复用引用，见 engine/mainloop） */
+  private frame: MainloopRuntime | null = null;
   private loadedPhases = new Set<string>();
   private saved: any = null;
   private createdAt: string | undefined;
   private unsubs: Array<() => void> = [];
+  /** 按键路由清理函数（mountControls 注册） */
+  private keymapDispose: (() => void) | null = null;
 
   /** 供 HUD 查询的动态状态 */
   state = {
@@ -116,7 +124,6 @@ export class GameEngine {
   /** 一次性提示队列（兼容 e2e 探测；内容由事件总线填充，UI 直接订阅总线） */
   events: GameplayEvent[] = [];
   photoHits: PhotoHit[] = [];
-  private fpsAcc = 0; private fpsFrames = 0;
 
   constructor(opts: EngineOptions) {
     this.opts = opts;
@@ -206,6 +213,8 @@ export class GameEngine {
       case 'systems': {
         if (this.loadedPhases.has('systems')) return;
         const saved = this.saved;
+        // 观景台登顶控制器（E 键登顶/下塔）
+        this.deck = this.createDeck();
         // 飞升系统：阶段判定 + 能力解锁（建造/传送门槛）
         this.ascension = new AscensionSystem(this.sceneData!, {
           points: this.gameplay!.state.ascensionPoints,
@@ -346,14 +355,16 @@ export class GameEngine {
         // 调试暴露（测试脚本用）
         (window as any).__engine = this;
 
-        // 按键：C 相机 / 空格快门
-        window.addEventListener('keydown', this.onKey);
+        // 按键：C 相机 / 空格快门（所有系统装配完后注册）
+        this.keymapDispose = this.mountControls();
         window.addEventListener('resize', this.onResize);
 
         // 定时云存档（30s）
         this.saveTimer = window.setInterval(() => this.saveNow(), 30000);
         this.graceUntil = performance.now() + 1500;
 
+        // 主循环运行时上下文（复用引用，逐帧推进见 engine/mainloop）
+        this.frame = this.buildFrame();
         this.loop();
         this.loadedPhases.add('systems');
         return;
@@ -375,69 +386,34 @@ export class GameEngine {
     this.events.push(e);
   }
 
-  private onKey = (e: KeyboardEvent) => {
-    if (e.repeat) return;
-    const k = e.key.toLowerCase();
-    if (k === 'e' && this.player) {
-      // NPC 对话优先（更近的交互），否则观景台登顶/下塔，否则地铁站
-      if (this.npc?.tryInteract(this.player.position)) return;
-      if (this.tryDeck()) return;
-      // 站内交互键：手动探测最近站并开面板（transit.update 每帧轮询 keys 不可靠，
-      // 因为合成键盘事件在 keyup 后 keys 已清空，改由事件直推）
-      this.transit?.tryInteract(this.player.position);
-      return;
-    }
-    if (k === 'c' && this.photoMode && this.player) {
-      this.photoMode.toggle();
-      this.state.photoActive = this.photoMode.active;
-    } else if (k === 'f' && this.photoMode?.active) {
-      // 自拍模式切换（举起相机后）
-      this.photoMode.toggleSelfie();
-      this.pushToast(this.photoMode.selfie ? '自拍模式开启' : '自拍模式关闭');
-    } else if (k === 'v' && this.player && this.ascension?.has('fly') && !this.photoMode?.active && !this.player.flying) {
-      // 飞升 fly 解锁：V 键起飞（落地自动退出，飞行中再按无效防抖）
-      this.player.flightMode(true);
-      this.pushToast('起飞！Space 上升 · Ctrl 下降 · 降至地面自动降落');
-    } else if (k === 's' && this.shop && this.player && !this.photoMode?.active) {
-      // P2 商店/投资面板（拍照模式时不抢占）
-      this.shop.toggle();
-      this.shop.refresh();
-    } else if (k === 'g' && this.gallery && this.player && !this.photoMode?.active) {
-      // P2-4 作品广场
-      void this.gallery.toggle();
-    } else if (k === 'o' && this.souvenir && this.player && !this.photoMode?.active) {
-      // 纪念品图鉴
-      this.souvenir.toggle();
-    } else if (k === ' ' && this.photoMode?.active && this.camera) {
-      e.preventDefault();
-      this.photoMode.shoot(this.camera);
-    }
-  };
+  /** 装配全局按键路由（engine/keymap），返回清理函数 */
+  private mountControls(): () => void {
+    return mountKeymap({
+      player: this.player,
+      camera: this.camera,
+      npc: this.npc,
+      deck: this.deck,
+      transit: this.transit,
+      photoMode: this.photoMode ? {
+        toggle: () => { this.photoMode!.toggle(); return this.photoMode!.active; },
+        active: () => this.photoMode!.active,
+        toggleSelfie: () => this.photoMode!.toggleSelfie(),
+        selfie: () => this.photoMode!.selfie,
+        shoot: c => this.photoMode!.shoot(c),
+      } : null,
+      ascension: this.ascension,
+      shop: this.shop,
+      gallery: this.gallery,
+      souvenir: this.souvenir,
+      onPhotoToggle: active => { this.state.photoActive = active; },
+      toast: msg => this.pushToast(msg),
+    });
+  }
 
-  /**
-   * 遮挡检测：相机 → 目标点射线是否被实体建筑挡住（拍照入镜判定用）。
-   * 只检测世界静态建筑（world 组），排除透明装饰（光圈/光柱/名牌）。
-   */
-  private occluderRay = new THREE.Raycaster();
-
+  /** 遮挡检测：相机 → 目标点射线是否被实体建筑挡住（拍照入镜判定用）。 */
   private isOccluded(from: THREE.Vector3, to: THREE.Vector3): boolean {
     if (!this.world) return false;
-    // 每次快门现收集：流式加载会挂载/卸载区块，缓存会失效（快门频率低，可接受）
-    const list: THREE.Mesh[] = [];
-    this.world.traverse(o => {
-      const m = o as THREE.Mesh;
-      if (!(m as any).isMesh || (m as any).isSprite) return;
-      const mat = m.material as THREE.Material & { transparent?: boolean };
-      if (mat?.transparent) return;   // 光圈/光柱等透明装饰不算遮挡
-      list.push(m);
-    });
-    const dir = new THREE.Vector3().subVectors(to, from);
-    const dist = dir.length();
-    if (dist < 1) return false;
-    dir.divideScalar(dist);
-    this.occluderRay.set(from, dir);
-    this.occluderRay.far = dist - 4;   // 留出目标点自身厚度余量
-    return this.occluderRay.intersectObjects(list, false).length > 0;
+    return isOccludedMesh(this.world, from, to);
   }
 
   /** 飞升重评估：拍照/任务加点后调用，跨阶段时提示 + 动态解锁系统 */
@@ -493,49 +469,15 @@ export class GameEngine {
     try { await uploadSave(this.session, save); } catch { /* 离线静默 */ }
   }
 
-  /** 观景台登顶/下塔：E 键调用。在 deck 地标光圈内登顶俯瞰，已登顶则下塔 */
-  private tryDeck(): boolean {
-    if (!this.player || !this.sceneData) return false;
-    // 已在俯瞰：下塔
-    if (this.deckLandmark) {
-      this.exitDeck();
-      return true;
-    }
-    // 找最近的 deck 地标（光圈内）
-    const pos = this.player.position;
-    let best: Landmark | null = null;
-    let bestD = Infinity;
-    for (const l of this.sceneData.landmarks) {
-      if (!l.deck || l.enabled === false || !l.latlng) continue;
-      const p = proj(l.latlng.lat, l.latlng.lng);
-      const d = Math.hypot(pos.x - p.x, pos.z - p.z);
-      if (d < (l.interactRadius ?? 600) && d < bestD) { best = l; bestD = d; }
-    }
-    if (best) this.enterDeck(best);
-    return !!best;
-  }
-
-  /** 登顶：冻结地面移动，相机飞升到塔顶俯瞰 */
-  private enterDeck(lm: Landmark) {
-    if (!this.player || !lm.latlng) return;
-    const p = proj(lm.latlng.lat, lm.latlng.lng);
-    this.deckReturn = { x: this.player.position.x, z: this.player.position.z };
-    const height = (LABEL_HEIGHT[lm.id] ?? 40) + 6;
-    this.deckLandmark = lm;
-    this.player.deckMode(true, p.x, p.z, height);
-    this.pushToast(`登顶「${lm.name}」观景台，俯瞰全城`);
-    // 登顶可拍夜景/俯瞰照
-    void this.saveNow();
-  }
-
-  /** 下塔：恢复地面位置与控制 */
-  private exitDeck() {
-    if (!this.player || !this.deckReturn) return;
-    this.deckLandmark = null;
-    this.player.deckMode(false);
-    this.player.teleport(this.deckReturn.x, this.deckReturn.z);
-    this.deckReturn = null;
-    this.pushToast('回到地面');
+  /** 装配观景台登顶控制器（依赖注入，见 engine/deck） */
+  private createDeck(): DeckController {
+    return new DeckController({
+      player: this.player,
+      landmarks: this.sceneData!.landmarks,
+      deckHeight: id => LABEL_HEIGHT[id] ?? 40,
+      toast: msg => this.pushToast(msg),
+      onChanged: () => void this.saveNow(),
+    });
   }
 
   /** 面板占用判断（B/T 等模式键冲突防护） */
@@ -548,7 +490,7 @@ export class GameEngine {
       || this.shop?.isOpen === true
       || this.gallery?.isOpen === true
       || this.souvenir?.isOpen === true
-      || this.deckLandmark !== null;
+      || this.deck?.landmark !== null;
   }
 
   /** P2-4 导入他人作品：以玩家当前位置为中心复制 placements（付费 ¥200） */
@@ -625,91 +567,41 @@ export class GameEngine {
     this.renderer.setSize(el.clientWidth, el.clientHeight);
   };
 
+  /** 装配主循环运行时上下文（systems 阶段一次性构造；动态系统用 getter 反映即时解锁） */
+  private buildFrame(): MainloopRuntime {
+    return {
+      state: this.state,
+      worldTick,
+      streaming: this.streaming,
+      lightingRig: this.lightingRig,
+      npc: this.npc,
+      dayNight: this.dayNight,
+      weather: this.weather,
+      transit: this.transit,
+      buildMode: { update: () => this.buildMode?.update() },
+      teleport: { tickRefresh: () => this.teleport?.tickRefresh() },
+      gameplay: this.gameplay,
+      player: this.player,
+      sceneData: this.sceneData,
+      camera: this.camera,
+      renderer: this.renderer,
+      three: this.three,
+      shadowPos: this.shadowPos,
+      lastPos: this.lastPos,
+      tpRefreshAcc: this.tpRefreshAcc,
+      investAcc: this.investAcc,
+      fpsAcc: this.fpsAcc,
+      fpsFrames: this.fpsFrames,
+      districtProj: null,
+    };
+  }
+
   private loop = () => {
     if (this.disposed) return;
     this.raf = requestAnimationFrame(this.loop);
     const dt = Math.min(this.clock.getDelta(), 0.1);
     const t = this.clock.elapsedTime;
-
-    worldTick?.(t);
-
-    // 阶段三：分块流式加载（按玩家位置挂载/卸载街区建筑）
-    if (this.streaming && this.player) {
-      this.streaming.update(this.player.position.x, this.player.position.z);
-      // 阴影相机跟随玩家：位移超过阈值才更新（避免逐帧抖动导致阴影边缘闪烁）
-      const px = this.player.position.x, pz = this.player.position.z;
-      if (Math.hypot(px - this.shadowPos.x, pz - this.shadowPos.z) > 120) {
-        this.shadowPos = { x: px, z: pz };
-        this.lightingRig?.followShadow(px, pz);
-      }
-    }
-
-    // P1 角色动画：NPC 浮动微动 / 路网游走
-    this.npc?.tick?.(t, dt);
-
-    // 日夜循环推进（虚拟时钟）
-    this.dayNight?.update(dt);
-    this.state.clock = this.dayNight?.clockString() ?? '08:00';
-    this.state.night = this.dayNight?.isNight() ?? false;
-
-    // 天气推进（雨/雪粒子）
-    this.weather?.update(dt);
-    this.state.weather = this.weather?.label ?? '晴';
-
-    // 交通：乘车期间接管相机与玩家
-    if (this.transit && this.player) {
-      this.transit.update(dt, this.player, this.player.keys);
-    }
-
-    // 建造幽灵光标跟随
-    this.buildMode?.update();
-
-    // 传送面板冷却倒计时刷新（节流）
-    this.tpRefreshAcc += dt;
-    if (this.tpRefreshAcc > 1) { this.tpRefreshAcc = 0; this.teleport?.tickRefresh(); }
-
-    // P2 投资被动收益结算（每 30s 一次）
-    this.investAcc += dt;
-    if (this.investAcc > 30) { this.investAcc = 0; this.gameplay?.settleInvestment(); }
-
-    const riding = this.transit?.riding ?? false;
-
-    if (this.player && this.gameplay && !riding) {
-      // speed 道具效果：移动速度 ×1.5（飞行同步加成）
-      this.player.speedBoost = this.gameplay.hasEffect('speed') ? 1.5 : 1;
-      this.player.update(dt, this.sceneData?.landmarks ?? []);
-      const pos = this.player.position;
-      this.state.pos.x = Math.round(pos.x);
-      this.state.pos.z = Math.round(pos.z);
-
-      // 行走里程
-      const moved = Math.hypot(pos.x - this.lastPos.x, pos.z - this.lastPos.z);
-      if (moved > 0.5) this.gameplay.walk(moved);
-      this.lastPos = { x: pos.x, z: pos.z };
-
-      // 到访 / 近地标
-      const nearby = this.gameplay.probe({ x: pos.x, z: pos.z });
-      this.state.nearLandmark = nearby[0]
-        ? this.sceneData!.landmarks.find(l => l.id === nearby[0].id) ?? null
-        : null;
-
-      // 区名
-      let bestD = Infinity, bestName = '';
-      for (const d of this.sceneData!.districts) {
-        const c = proj(d.center.lat, d.center.lng);
-        const dist = Math.hypot(c.x - pos.x, c.z - pos.z);
-        if (dist < bestD) { bestD = dist; bestName = d.name; }
-      }
-      this.state.districtName = bestD < 1500 ? bestName : '深圳郊野';
-    }
-
-    this.fpsAcc += dt; this.fpsFrames++;
-    if (this.fpsAcc >= 0.5) {
-      this.state.fps = Math.round(this.fpsFrames / this.fpsAcc);
-      this.fpsAcc = 0; this.fpsFrames = 0;
-    }
-
-    this.renderer.render(this.three, this.camera);
+    if (this.frame) stepFrame(this.frame, dt, t);
   };
 
   dispose() {
@@ -717,7 +609,8 @@ export class GameEngine {
     cancelAnimationFrame(this.raf);
     worldTick = null;
     clearInterval(this.saveTimer);
-    window.removeEventListener('keydown', this.onKey);
+    this.keymapDispose?.();
+    this.keymapDispose = null;
     window.removeEventListener('resize', this.onResize);
     this.photoMode?.dispose();
     this.transit?.dispose();
