@@ -74,25 +74,16 @@ export class DayNightSystem {
     // 补光夜晚提一点（冷色月光）
     lighting.fill.intensity = THREE.MathUtils.lerp(0.12, 0.28, daylight);
 
-    // 日光颜色：白昼暖白 → 清晨/黄昏暖橙 → 夜冷蓝
-    const day = new THREE.Color(0xfff0d0);
-    const dawn = new THREE.Color(0xffb06a);
-    const night = new THREE.Color(0x3a4a8a);
-    const sunColor = new THREE.Color().copy(night).lerp(day, daylight).lerp(dawn, (1 - twilight) * (1 - daylight));
-    lighting.sun.color.copy(sunColor);
+    // 日光颜色：白昼暖白 → 清晨/黄昏暖橙 → 夜冷蓝（复用临时 Color 避免每帧 GC）
+    lighting.sun.color.copy(_nightC).lerp(_dayC, daylight).lerp(_dawnC, (1 - twilight) * (1 - daylight));
 
     // 天空色带（uniforms）
-    const skyTop = new THREE.Color(0x0a1a3a).lerp(new THREE.Color(0x3a7ca8), daylight);
-    const skyMid = new THREE.Color(0x0a1830).lerp(new THREE.Color(0x87c5eb), daylight);
-    const skyBot = new THREE.Color(0x081020).lerp(new THREE.Color(0xd8e8f2), daylight);
-    skyMat.uniforms.topColor.value.copy(skyTop);
-    skyMat.uniforms.midColor.value.copy(skyMid);
-    skyMat.uniforms.botColor.value.copy(skyBot);
+    skyMat.uniforms.topColor.value.copy(_skyTopN).lerp(_skyTopD, daylight);
+    skyMat.uniforms.midColor.value.copy(_skyMidN).lerp(_skyMidD, daylight);
+    skyMat.uniforms.botColor.value.copy(_skyBotN).lerp(_skyBotD, daylight);
 
     // 雾色/浓度（夜更浓更暗）
-    const fogDay = new THREE.Color(0xbfd4e6);
-    const fogNight = new THREE.Color(0x0a1526);
-    fog.color.copy(fogDay).lerp(fogNight, 1 - daylight);
+    fog.color.copy(_fogDay).lerp(_fogNight, 1 - daylight);
     fog.near = THREE.MathUtils.lerp(500, 1200, daylight);
     fog.far = THREE.MathUtils.lerp(2400, 5600, daylight);
 
@@ -100,3 +91,16 @@ export class DayNightSystem {
     renderer.toneMappingExposure = THREE.MathUtils.lerp(1.35, 1.0, daylight);
   }
 }
+
+// 模块级复用色（昼夜插值端点；避免 apply() 每帧新建 Color 对象产生 GC 压力）
+const _dayC = new THREE.Color(0xfff0d0);
+const _dawnC = new THREE.Color(0xffb06a);
+const _nightC = new THREE.Color(0x3a4a8a);
+const _skyTopD = new THREE.Color(0x3a7ca8);
+const _skyMidD = new THREE.Color(0x87c5eb);
+const _skyBotD = new THREE.Color(0xd8e8f2);
+const _skyTopN = new THREE.Color(0x0a1a3a);
+const _skyMidN = new THREE.Color(0x0a1830);
+const _skyBotN = new THREE.Color(0x081020);
+const _fogDay = new THREE.Color(0xbfd4e6);
+const _fogNight = new THREE.Color(0x0a1526);

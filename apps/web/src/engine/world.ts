@@ -466,6 +466,9 @@ const CAR_COLORS = [0xd8dde4, 0xc84f3a, 0x3a6ea8];
 const _M = new THREE.Matrix4();
 const _pos = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
+/** 车轮横躺四元数：CylinderGeometry 默认 Y 轴向（轮轴竖直），绕 Z 转 90° 使其横躺（轮轴沿 X） */
+const _rollQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+const _wheelQuat = new THREE.Quaternion();
 const _scl = new THREE.Vector3(1, 1, 1);
 
 /**
@@ -539,9 +542,9 @@ function buildVehicles(nets: DistrictRoadNet[]): { group: THREE.Group; update: (
       else if (c.t < 0) { c.t = 0; c.dir = 1; }  // 到起点反向
       const x = c.x1 + (c.x2 - c.x1) * c.t;
       const z = c.z1 + (c.z2 - c.z1) * c.t;
-      // 朝向：沿行驶方向（车头默认 +z，旋转绕 Y）
+      // 朝向：车身长轴(X=4.6)沿行驶方向；绕 Y 旋转 ang 后 X 轴单位向量→(cos,0,-sin)
       const fx = c.x2 - c.x1, fz = c.z2 - c.z1;
-      const ang = c.dir === 1 ? Math.atan2(fx, fz) : Math.atan2(-fx, -fz);
+      const ang = c.dir === 1 ? Math.atan2(-fz, fx) : Math.atan2(fz, -fx);
       _quat.setFromAxisAngle(_up, ang);
 
       // 车身实例
@@ -552,13 +555,14 @@ function buildVehicles(nets: DistrictRoadNet[]): { group: THREE.Group; update: (
       _pos.set(x, 2.0, z);
       _M.compose(_pos, _quat, _scl);
       cabinMesh.setMatrixAt(c.instIdx, _M);
-      // 四轮实例（绕车身中心随朝向旋转）
+      // 四轮实例：车身坐标系内偏移 + 横躺，再随车身朝向旋转
+      _wheelQuat.copy(_quat).multiply(_rollQuat);
       for (let w = 0; w < 4; w++) {
         const [wx, wz] = wheelOffsets[w];
         const rx = wx * Math.cos(ang) + wz * Math.sin(ang);
         const rz = -wx * Math.sin(ang) + wz * Math.cos(ang);
         _pos.set(x + rx, 0.4, z + rz);
-        _M.compose(_pos, _quat, _scl);
+        _M.compose(_pos, _wheelQuat, _scl);
         wheelMesh.setMatrixAt(c.instIdx * 4 + w, _M);
       }
     }
