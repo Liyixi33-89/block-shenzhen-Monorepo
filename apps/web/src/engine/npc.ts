@@ -56,6 +56,8 @@ interface NpcEntity {
 const NPC_WALK = 7;
 /** 距路径点多少距离算到达 */
 const NPC_ARRIVE = 2.5;
+/** 动态 NPC 相互最小间距（两两避让推开距离，防重叠） */
+const NPC_MIN_SEP = 5;
 
 // ---- NPC 共享资源：几何体全局单一实例，材质按颜色缓存（数十个 NPC 共享） ----
 // 标记为 shared：即使未来 dispose 范围扩大到全场景，也不会误释放这些缓存资源。
@@ -388,6 +390,27 @@ export class NpcSystem {
         // 静态 NPC：原地轻微浮动
         const bob = Math.sin(t * 1.6 + e.x * 0.01 + e.z * 0.01) * 0.35;
         e.group.position.y = bob;
+      }
+    }
+    // 两两避让：动态 NPC 相互靠太近时推开，避免重叠（数量少，O(n²) 可接受）
+    if (this.entities.length > 1) {
+      for (let i = 0; i < this.entities.length; i++) {
+        const a = this.entities[i];
+        if (!a.dynamic) continue;
+        for (let j = i + 1; j < this.entities.length; j++) {
+          const b = this.entities[j];
+          if (!b.dynamic) continue;
+          const dx = b.x - a.x, dz = b.z - a.z;
+          const d = Math.hypot(dx, dz);
+          if (d > 0 && d < NPC_MIN_SEP) {
+            const push = (NPC_MIN_SEP - d) / 2;
+            const ux = dx / d, uz = dz / d;
+            a.x -= ux * push; a.z -= uz * push;
+            b.x += ux * push; b.z += uz * push;
+            a.group.position.set(a.x, 0, a.group.position.y);
+            b.group.position.set(b.x, 0, b.group.position.y);
+          }
+        }
       }
     }
   }

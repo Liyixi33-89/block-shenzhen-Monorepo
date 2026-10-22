@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { proj } from '@block-sz/shared';
 import type { Scene, Element, BuildRecipe } from '@block-sz/schema';
 import { iconEl, categoryIcon } from './icons';
+import { collision } from './collision';
 
 export interface BuildOptions {
   container: HTMLElement;
@@ -172,6 +173,39 @@ export class BuildMode {
     }
   }
 
+  // ---------------- 放置遮挡检测 ----------------
+  /** 计算放置元素在 (gx,gz) 的水平占地半径（基于 ghost 包围盒，无 ghost 时给默认 GRID/2） */
+  private placementRadius(): number {
+    if (this.ghost) {
+      const bb = new THREE.Box3().setFromObject(this.ghost);
+      if (!bb.isEmpty()) {
+        const sz = new THREE.Vector3(); bb.getSize(sz);
+        return Math.max(sz.x, sz.z) / 2 + 0.6;   // 0.6 留缝，避免贴墙
+      }
+    }
+    return GRID / 2;
+  }
+
+  /**
+   * 放置点是否被占据：与既有建筑（collision 世界）或已放置物重叠。
+   * 世界建筑注册在 collision 单例（圆形近似）；已放置物按各自 group 包围盒精确判。
+   */
+  private isBlocked(gx: number, gz: number): boolean {
+    const r = this.placementRadius();
+    // 与既有建筑碰撞（世界静态体，圆形近似）
+    if (collision.blocked(gx, gz, r)) return true;
+    // 与已放置物重叠（逐个体检测，避免整组包围盒过于保守）
+    const probe = new THREE.Box3(
+      new THREE.Vector3(gx - r, -1e6, gz - r),
+      new THREE.Vector3(gx + r, 1e6, gz + r),
+    );
+    for (const [, g] of this.meshes) {
+      const bb = new THREE.Box3().setFromObject(g);
+      if (!bb.isEmpty() && probe.intersectsBox(bb)) return true;
+    }
+    return false;
+  }
+
   // ---------------- 每帧：光标投影 ----------------
   update() {
     if (!this.active) return;
@@ -192,7 +226,9 @@ export class BuildMode {
       this.ghost.visible = true;
       this.ghost.position.set(gx, 0, gz);
       this.ghost.rotation.y = this.rotStep * Math.PI / 2;
-      const ok = this.cursorValid && this.opts.getItemCount(this.selElement) > 0;
+      // 遮挡检测：放置点被现有建筑/已放置物占据 → 禁止（防止「隔空」放进楼里）
+      const blocked = this.isBlocked(gx, gz);
+      const ok = this.cursorValid && this.opts.getItemCount(this.selElement) > 0 && !blocked;
       this.ghostMat.color.setHex(ok ? 0x7ad0ff : 0xff5a5a);
       this.ghostMat.opacity = ok ? 0.45 : 0.3;
     }
@@ -247,6 +283,9 @@ export class BuildMode {
 
     const gx = Math.round(this.cursor.x / GRID) * GRID;
     const gz = Math.round(this.cursor.z / GRID) * GRID;
+
+    // 遮挡检测：目标点被建筑/已放置物占据则拒绝放置（防止隔空放进楼里）
+    if (this.isBlocked(gx, gz)) { this.opts.toast('该位置被建筑占据'); return; }
 
     // 实体网格
     const g = this.buildElementMesh(e);

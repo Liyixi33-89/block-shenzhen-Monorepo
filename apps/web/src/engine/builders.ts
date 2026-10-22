@@ -1,21 +1,23 @@
 // 25 个深圳地标专属像素建模 —— 每个 builder 返回一个 Group，置于投影坐标原点
 // 建模风格：方块堆叠像素风，颜色贴近实景，主塔 80-140 单位高
 import * as THREE from 'three';
+import { markSharedGeo, markSharedMat } from './assets';
 
 export type Builder = () => THREE.Group;
 
 // ---------- 基础件 ----------
-const geoBox = new THREE.BoxGeometry(1, 1, 1);
-const geoCyl = new THREE.CylinderGeometry(0.5, 0.5, 1, 10);
-const geoCone = new THREE.ConeGeometry(0.5, 1, 8);
-const geoSphere = new THREE.SphereGeometry(0.5, 12, 10);
+// 单位件与材质缓存跨世界复用，标记 shared：即使 dispose 范围扩大也不会误释放。
+const geoBox = markSharedGeo(new THREE.BoxGeometry(1, 1, 1));
+const geoCyl = markSharedGeo(new THREE.CylinderGeometry(0.5, 0.5, 1, 10));
+const geoCone = markSharedGeo(new THREE.ConeGeometry(0.5, 1, 8));
+const geoSphere = markSharedGeo(new THREE.SphereGeometry(0.5, 12, 10));
 
 const matCache = new Map<string, THREE.MeshStandardMaterial>();
 function M(color: number, emissive = 0): THREE.MeshStandardMaterial {
   const key = color + ':' + emissive;
   let m = matCache.get(key);
   if (!m) {
-    m = new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.05 });
+    m = markSharedMat(new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.05 }));
     if (emissive) m.emissive = new THREE.Color(emissive);
     matCache.set(key, m);
   }
