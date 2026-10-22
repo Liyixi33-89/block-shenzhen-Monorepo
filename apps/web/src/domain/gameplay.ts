@@ -48,6 +48,8 @@ export class Gameplay {
   state: GameplaySnapshot;
   private listeners = new Set<(e: GameplayEvent) => void>();
   private walkAcc = 0;
+  /** 地标投影坐标缓存（probe 每帧调用；静态坐标只需算一次） */
+  private lmProj: Array<{ x: number; z: number }> | null = null;
 
   constructor(scene: Scene, init?: Partial<GameplaySnapshot>) {
     this.scene = scene;
@@ -359,8 +361,16 @@ export class Gameplay {
   /** 距地标距离与到访判定（引擎每帧喂玩家坐标） */
   probe(pos: { x: number; z: number }) {
     const nearby: Array<{ id: string; name: string; dist: number }> = [];
-    for (const l of this.scene.landmarks) {
-      const p = proj(l.latlng.lat, l.latlng.lng);
+    // 静态投影坐标缓存（每帧调用，避免重复 proj 数学计算）
+    if (!this.lmProj) {
+      this.lmProj = this.scene.landmarks.map(l => {
+        const p = proj(l.latlng.lat, l.latlng.lng);
+        return { x: p.x, z: p.z };
+      });
+    }
+    for (let i = 0; i < this.scene.landmarks.length; i++) {
+      const l = this.scene.landmarks[i];
+      const p = this.lmProj[i];
       const dist = Math.hypot(p.x - pos.x, p.z - pos.z);
       if (dist < (l.interactRadius ?? 600)) {
         nearby.push({ id: l.id, name: l.name, dist });
