@@ -34,7 +34,7 @@ export interface NpcOptions {
   roadGraph?: RoadGraph | null;
 }
 
-const TALK_RADIUS = 26;
+const TALK_RADIUS = 22;
 
 /** 世界中的 NPC 实体（组：身体 + 头 + 名牌 Sprite） */
 interface NpcEntity {
@@ -53,18 +53,18 @@ interface NpcEntity {
 }
 
 /** 动态 NPC 步速（单位/秒，慢于玩家步行） */
-const NPC_WALK = 7;
+const NPC_WALK = 11;
 /** 距路径点多少距离算到达 */
-const NPC_ARRIVE = 2.5;
+const NPC_ARRIVE = 2;
 /** 动态 NPC 相互最小间距（两两避让推开距离，防重叠） */
-const NPC_MIN_SEP = 5;
+const NPC_MIN_SEP = 3.5;
 
 // ---- NPC 共享资源：几何体全局单一实例，材质按颜色缓存（数十个 NPC 共享） ----
 // 标记为 shared：即使未来 dispose 范围扩大到全场景，也不会误释放这些缓存资源。
 const NPC_GEO = {
-  body: markSharedGeo(new THREE.BoxGeometry(6, 8, 4)),
-  head: markSharedGeo(new THREE.BoxGeometry(5, 5, 5)),
-  hat: markSharedGeo(new THREE.BoxGeometry(6, 1.6, 6)),
+  body: markSharedGeo(new THREE.BoxGeometry(2.8, 4.6, 1.8)),
+  head: markSharedGeo(new THREE.BoxGeometry(2.2, 2.2, 2.2)),
+  hat: markSharedGeo(new THREE.BoxGeometry(3.0, 0.8, 3.0)),
 };
 const npcMatCache = new Map<number, THREE.MeshStandardMaterial>();
 function npcMat(color: number): THREE.MeshStandardMaterial {
@@ -264,11 +264,11 @@ export class NpcSystem {
     const g = new THREE.Group();
     // 几何体全局共享（同一形状无需每个 NPC 新建）
     const body = new THREE.Mesh(NPC_GEO.body, npcMat(bodyColor));
-    body.position.y = 4;
+    body.position.y = 2.3;
     const head = new THREE.Mesh(NPC_GEO.head, npcMat(0xffd9a0));
-    head.position.y = 10.5;
+    head.position.y = 6.7;
     const hat = new THREE.Mesh(NPC_GEO.hat, npcMat(hatColor));
-    hat.position.y = 13.3;
+    hat.position.y = 8.2;
     body.castShadow = true;
     head.castShadow = true;
     hat.castShadow = true;
@@ -435,7 +435,7 @@ export class NpcSystem {
     tex.magFilter = THREE.NearestFilter;
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
     sp.scale.set(w / fs * 3, 3, 1);
-    sp.position.y = 18;
+    sp.position.y = 12;
     return sp;
   }
 

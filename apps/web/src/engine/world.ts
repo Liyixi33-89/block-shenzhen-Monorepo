@@ -200,8 +200,8 @@ function buildDistrictBlock(d: Scene['districts'][number], net: DistrictRoadNet)
         const t = (i + 0.5) / n;
         const px = ax + (bx - ax) * t;
         const pz = az + (bz - az) * t;
-        // 楼宇尺寸：贴边深度 8-14，宽度略小于步长
-        const depth = 8 + rnd() * 6;
+        // 楼宇尺寸：贴边深度 12-20（楼体饱满，避免细高桩），宽度略小于步长
+        const depth = 12 + rnd() * 8;
         const w = step * (0.72 + rnd() * 0.2);
         const h = 6 + rnd() * rnd() * maxH * (0.6 + cell.density * 0.4);
         // 楼中心 = 边点向内法线方向偏移 depth/2
@@ -287,13 +287,13 @@ function buildTraffic(scene: Scene): THREE.Group {
     const v = pos.get(s.id)!;
     const st = new THREE.Group();
     st.position.set(v.x, 0, v.z);
-    // 地铁入口风格：玻璃方亭
-    box(st, 0, 0, 0, 8, 4.4, 8, 0x4a6a8a);
-    box(st, 0, 4.4, 0, 6.4, 0.8, 6.4, 0x7ad0ff, { emissive: 0x0a2a4a });
+    // 地铁入口风格：玻璃方亭（比人物略高，像真实地铁口）
+    box(st, 0, 0, 0, 9, 7.5, 9, 0x4a6a8a);
+    box(st, 0, 7.5, 0, 7, 1.0, 7, 0x7ad0ff, { emissive: 0x0a2a4a });
     // 出口扶梯
-    box(st, 5.5, 0, 0, 3, 3, 5, 0x39546e);
+    box(st, 6.5, 0, 0, 3.5, 4, 5.5, 0x39546e);
     const label = labelSprite(s.name, '#7ad0ff');
-    label.position.y = 14;
+    label.position.y = 17;
     label.scale.set(44, 11, 1);
     st.add(detailSwitch(label, STATION_LABEL_LOD));
     g.add(st);
