@@ -66,8 +66,8 @@ export function stepFrame(r: MainloopRuntime, dt: number, t: number) {
     }
   }
 
-  // P1 角色动画：NPC 浮动微动 / 路网游走
-  r.npc?.tick?.(t, dt);
+  // P1 角色动画：NPC 浮动微动 / 路网游走（传玩家位置用于名牌距离裁剪）
+  r.npc?.tick?.(t, dt, r.player ? { x: r.player.position.x, z: r.player.position.z } : undefined);
 
   // 日夜循环推进（虚拟时钟）
   r.dayNight?.update(dt);

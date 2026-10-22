@@ -42,6 +42,8 @@ interface NpcEntity {
   group: THREE.Group;
   x: number;
   z: number;
+  /** 头顶名牌 sprite（远距隐藏，减少离屏 sprite 渲染） */
+  label?: THREE.Sprite;
   /** 是否为动态随机 NPC（含职业对白池，入口台词随天气/夜晚变化） */
   dynamic?: boolean;
   job?: JobProfile;
@@ -58,6 +60,8 @@ const NPC_WALK = 11;
 const NPC_ARRIVE = 2;
 /** 动态 NPC 相互最小间距（两两避让推开距离，防重叠） */
 const NPC_MIN_SEP = 3.5;
+/** 头顶名牌显示距离（超出隐藏，减少离屏 sprite 渲染） */
+const NPC_LABEL_LOD = 150;
 
 // ---- NPC 共享资源：几何体全局单一实例，材质按颜色缓存（数十个 NPC 共享） ----
 // 标记为 shared：即使未来 dispose 范围扩大到全场景，也不会误释放这些缓存资源。
@@ -245,11 +249,12 @@ export class NpcSystem {
       const g = this.makeBody(0x1c4a6e, 0xe8c050);
 
       // 头顶名牌（Canvas Sprite）
-      g.add(this.nameSprite(npc.name));
+      const label = this.nameSprite(npc.name);
+      g.add(label);
 
       g.position.set(x, 0, z);
       this.opts.scene3.add(g);
-      this.entities.push({ npc, group: g, x, z });
+      this.entities.push({ npc, group: g, x, z, label });
     }
 
     // 动态随机 NPC（城市生气）
@@ -316,7 +321,8 @@ export class NpcSystem {
       const name = rndName(job);
       const { x, z } = randPos();
       const group = this.makeBody(job.body, job.hat);
-      group.add(this.nameSprite(name));
+      const label = this.nameSprite(name);
+      group.add(label);
       group.position.set(x, 0, z);
       this.opts.scene3.add(group);
 
@@ -352,14 +358,19 @@ export class NpcSystem {
       // 阶段二：动态 NPC 初始游走路径（沿路网；无路网图则原地微动）
       const graph = this.opts.roadGraph;
       const walkPath = graph ? randomWalkPath(graph, { x, z }, 4 + Math.floor(Math.random() * 4)) : undefined;
-      this.entities.push({ npc, group, x, z, dynamic: true, job, walkPath, walkIdx: 0 });
+      this.entities.push({ npc, group, x, z, dynamic: true, job, label, walkPath, walkIdx: 0 });
     }
   }
 
   /** P1 每帧微动：静态 NPC 轻微浮动；动态 NPC 沿路网游走（阶段二） */
-  tick(t: number, dt = 0.016) {
+  tick(t: number, dt = 0.016, playerPos?: { x: number; z: number }) {
     const graph = this.opts.roadGraph;
     for (const e of this.entities) {
+      // 名牌距离裁剪：超过 LABEL_LOD 隐藏离屏名牌（sprite 渲染便宜但数量可观）
+      if (e.label) {
+        const vis = playerPos ? Math.hypot(e.x - playerPos.x, e.z - playerPos.z) < NPC_LABEL_LOD : true;
+        if (e.label.visible !== vis) e.label.visible = vis;
+      }
       if (e.dynamic && graph && e.walkPath?.length) {
         // 路网游走：沿路径逐点移动
         const target = e.walkPath[e.walkIdx ?? 0];
