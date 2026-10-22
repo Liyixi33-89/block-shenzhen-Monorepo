@@ -443,14 +443,17 @@ function buildTraffic(scene: Scene): THREE.Group {
 }
 
 // ---- 车流（动态车辆：沿主干道行驶，让街道"活"起来） ----
-// 车辆是动态实体（每帧移动），不能用 mergeStaticGroup；但几何/材质全局共享，
-// 单 mesh 多实例（instance）仍可由引擎合并渲染，数量控制在每区 4 辆左右。
+// 用 InstancedMesh 把全城车辆合并为极少数 draw call：
+//   车身按 3 档色各 1 个实例网格 + 车顶 1 个 + 车轮 1 个 = 共 5 个 draw call。
+// 每帧仅更新 instanceMatrix（无 draw call 增减），比独立 Group 高效数倍。
 const CAR_BODY = markSharedGeo(new THREE.BoxGeometry(4.6, 1.3, 2.2));
 const CAR_CABIN = markSharedGeo(new THREE.BoxGeometry(2.2, 0.8, 1.9));
 const CAR_WHEEL = markSharedGeo(new THREE.CylinderGeometry(0.42, 0.42, 0.3, 8));
+const _up = new THREE.Vector3(0, 1, 0);
 
 interface CarEntity {
-  mesh: THREE.Group;
+  colorIdx: number;         // 车身颜色档（对应一个 InstancedMesh）
+  instIdx: number;          // 该色档内的实例索引
   x1: number; z1: number;   // 线段起点
   x2: number; z2: number;   // 线段终点
   t: number;                // 0..1 沿线进度
@@ -458,53 +461,70 @@ interface CarEntity {
   speed: number;            // 单位/秒
 }
 
+/** 车身颜色档（每档一个 InstancedMesh；3 档兼顾多彩与 draw call） */
+const CAR_COLORS = [0xd8dde4, 0xc84f3a, 0x3a6ea8];
+const _M = new THREE.Matrix4();
+const _pos = new THREE.Vector3();
+const _quat = new THREE.Quaternion();
+const _scl = new THREE.Vector3(1, 1, 1);
+
 /**
  * 构建车流：在每个区的路网主干道上撒车，绑定一条线段往返行驶。
- * 返回 { group, update }：group 入场景树，update 每帧推进车辆位置。
+ * 用 InstancedMesh 合并渲染，返回 { group, update }。
  */
 function buildVehicles(nets: DistrictRoadNet[]): { group: THREE.Group; update: (t: number) => void } {
   const group = new THREE.Group();
   const cars: CarEntity[] = [];
-  const bodyMats = [0xd8dde4, 0x8fb0c8, 0xc84f3a, 0x3a6ea8, 0xe0b94a].map(c => mat(c));
   const cabinMat = mat(0x1a2a3a);
   const wheelMat = mat(0x11161c);
+  // 每种车身色一个 InstancedMesh（实例数先为 0，构建后设置 count）
+  const bodyMeshes = CAR_COLORS.map(c => {
+    const im = new THREE.InstancedMesh(CAR_BODY, mat(c), 0);
+    im.castShadow = true;
+    im.frustumCulled = false; // 车辆分散全城，禁 frustum 避免误剔（数量少，可接受）
+    return im;
+  });
+  const cabinMesh = new THREE.InstancedMesh(CAR_CABIN, cabinMat, 0);
+  const wheelMesh = new THREE.InstancedMesh(CAR_WHEEL, wheelMat, 0);
   let seed = 21;
   const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
 
   const CAR_PER_DISTRICT = 4;   // 每区主干道车辆数
+  // 先收集所有车的色档与线段，再按色档分桶计实例数
+  const plans: Array<{ color: number; seg: { x1: number; z1: number; x2: number; z2: number } }> = [];
   for (const net of nets) {
-    // 收集本区主干道（优先较长线段，减少原地打转）
     const majors = net.segs.filter(s => s.major && Math.hypot(s.x2 - s.x1, s.z2 - s.z1) > 60);
     if (!majors.length) continue;
     const budget = Math.min(CAR_PER_DISTRICT, majors.length * 2);
     for (let k = 0; k < budget; k++) {
       const s = majors[k % majors.length];
-      const color = bodyMats[Math.floor(rnd() * bodyMats.length)];
-      const mesh = new THREE.Group();
-      const body = new THREE.Mesh(CAR_BODY, color);
-      body.position.y = 1.25;
-      body.castShadow = true;
-      mesh.add(body);
-      const cabin = new THREE.Mesh(CAR_CABIN, cabinMat);
-      cabin.position.y = 2.0;
-      mesh.add(cabin);
-      // 四轮
-      for (const [wx, wz] of [[1.6, 0.9], [1.6, -0.9], [-1.6, 0.9], [-1.6, -0.9]]) {
-        const wheel = new THREE.Mesh(CAR_WHEEL, wheelMat);
-        wheel.rotation.z = Math.PI / 2;
-        wheel.position.set(wx, 0.4, wz);
-        mesh.add(wheel);
-      }
-      group.add(mesh);
-      // 随机进度与方向
-      cars.push({
-        mesh, x1: s.x1, z1: s.z1, x2: s.x2, z2: s.z2,
-        t: rnd(),
-        dir: rnd() > 0.5 ? 1 : -1,
-        speed: 16 + rnd() * 10, // 略慢于玩家步行(26)，让玩家能追上
-      });
+      plans.push({ color: Math.floor(rnd() * CAR_COLORS.length), seg: s });
     }
   }
+  // 全城无主干道 → 不构建车辆
+  if (!plans.length) return { group, update: () => {} };
+  // 初始化 InstancedMesh 容量
+  const perColor = new Array(CAR_COLORS.length).fill(0);
+  for (const p of plans) perColor[p.color]++;
+  bodyMeshes.forEach((im, i) => im.count = perColor[i]);
+  cabinMesh.count = plans.length;
+  wheelMesh.count = plans.length * 4;
+  const colorPtr = new Array(CAR_COLORS.length).fill(0);
+
+  plans.forEach(p => {
+    const s = p.seg;
+    cars.push({
+      colorIdx: p.color, instIdx: colorPtr[p.color]++,
+      x1: s.x1, z1: s.z1, x2: s.x2, z2: s.z2,
+      t: rnd(),
+      dir: rnd() > 0.5 ? 1 : -1,
+      speed: 16 + rnd() * 10, // 略慢于玩家步行(26)，让玩家能追上
+    });
+  });
+  bodyMeshes.forEach(im => group.add(im));
+  group.add(cabinMesh, wheelMesh);
+
+  const wheelOffsets: Array<[number, number, number]> = [[1.6, 0.4, 0.9], [1.6, 0.4, -0.9], [-1.6, 0.4, 0.9], [-1.6, 0.4, -0.9]];
 
   let lastT = 0;
   function update(t: number) {
@@ -513,16 +533,38 @@ function buildVehicles(nets: DistrictRoadNet[]): { group: THREE.Group; update: (
     lastT = t;
     if (dt > 0.1) dt = 0.1; // clamp 防跳帧
     for (const c of cars) {
-      c.t += c.dir * (c.speed * dt) / Math.hypot(c.x2 - c.x1, c.z2 - c.z1);
+      const len = Math.hypot(c.x2 - c.x1, c.z2 - c.z1) || 1;
+      c.t += c.dir * (c.speed * dt) / len;
       if (c.t > 1) { c.t = 1; c.dir = -1; }      // 到终点反向
       else if (c.t < 0) { c.t = 0; c.dir = 1; }  // 到起点反向
       const x = c.x1 + (c.x2 - c.x1) * c.t;
       const z = c.z1 + (c.z2 - c.z1) * c.t;
-      c.mesh.position.set(x, 0, z);
-      // 朝向：沿行驶方向
+      // 朝向：沿行驶方向（车头默认 +z，旋转绕 Y）
       const fx = c.x2 - c.x1, fz = c.z2 - c.z1;
-      c.mesh.rotation.y = c.dir === 1 ? Math.atan2(fx, fz) : Math.atan2(-fx, -fz);
+      const ang = c.dir === 1 ? Math.atan2(fx, fz) : Math.atan2(-fx, -fz);
+      _quat.setFromAxisAngle(_up, ang);
+
+      // 车身实例
+      _pos.set(x, 1.25, z);
+      _M.compose(_pos, _quat, _scl);
+      bodyMeshes[c.colorIdx].setMatrixAt(c.instIdx, _M);
+      // 车顶实例（相对车身 y=+0.75）
+      _pos.set(x, 2.0, z);
+      _M.compose(_pos, _quat, _scl);
+      cabinMesh.setMatrixAt(c.instIdx, _M);
+      // 四轮实例（绕车身中心随朝向旋转）
+      for (let w = 0; w < 4; w++) {
+        const [wx, wz] = wheelOffsets[w];
+        const rx = wx * Math.cos(ang) + wz * Math.sin(ang);
+        const rz = -wx * Math.sin(ang) + wz * Math.cos(ang);
+        _pos.set(x + rx, 0.4, z + rz);
+        _M.compose(_pos, _quat, _scl);
+        wheelMesh.setMatrixAt(c.instIdx * 4 + w, _M);
+      }
     }
+    bodyMeshes.forEach(im => im.instanceMatrix.needsUpdate = true);
+    cabinMesh.instanceMatrix.needsUpdate = true;
+    wheelMesh.instanceMatrix.needsUpdate = true;
   }
   return { group, update };
 }
