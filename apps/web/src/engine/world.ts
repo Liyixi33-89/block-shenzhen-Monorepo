@@ -80,8 +80,8 @@ function mergeStaticGroup(g: THREE.Object3D) {
     geos.forEach(gg => gg.dispose());
     const mesh = new THREE.Mesh(merged, material);
     mesh.frustumCulled = true;
-    // P0：合并后的静态建筑参与投影
-    mesh.castShadow = true;
+    // P0：合并后的静态建筑参与投影；透明材质（光圈/光柱/玻璃）不投影，避免透出怪影
+    mesh.castShadow = !material.transparent;
     g.add(mesh);
   }
 }
@@ -734,6 +734,7 @@ export function buildWorld(scene: Scene): WorldHandle {
 
   // 交通（站亭注册碰撞；站间距大，常驻渲染）
   const traffic = buildTraffic(scene);
+  mergeStaticGroup(traffic); // 站亭/扶梯几何按材质合并，名牌 sprite/LOD/线路连线自动跳过
   root.add(traffic);
   if (scene.traffic) {
     for (const s of scene.traffic.stations) {

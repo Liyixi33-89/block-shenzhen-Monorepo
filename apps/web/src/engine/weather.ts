@@ -81,7 +81,9 @@ export class WeatherSystem {
     if (this.points) {
       this.scene.remove(this.points);
       this.points.geometry.dispose();
-      (this.points.material as THREE.Material).dispose();
+      const mat = this.points.material as THREE.PointsMaterial;
+      mat.map?.dispose(); // 粒子贴图（CanvasTexture）每次生成，需随粒子一并释放防泄漏
+      mat.dispose();
       this.points = null;
       this.geo = null;
       this.positions = null;
