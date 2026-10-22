@@ -139,6 +139,23 @@ function labelSprite(text: string, color = '#ffffff', bg = 'rgba(10,20,40,0.75)'
   return sprite;
 }
 
+/** 装饰物 LOD 切换距离（超过该距离隐藏：名牌/光圈等远距不可见的细节） */
+const DECOR_LOD = 1150;        // 地标名牌 + 交互光圈
+const STATION_LABEL_LOD = 900; // 站亭名牌（小尺寸，更近才可见）
+
+/**
+ * 远距离细节开关：近距显示 nearObj，超过 farDist 自动隐藏。
+ * 用 THREE.LOD 实现，Three.js 在渲染时按相机距离自动选层，零每帧 JS 开销。
+ */
+function detailSwitch(nearObj: THREE.Object3D, farDist: number): THREE.LOD {
+  const lod = new THREE.LOD();
+  lod.addLevel(nearObj, 0);
+  const none = new THREE.Object3D();
+  none.visible = false; // 远距空层（不可见，无绘制）
+  lod.addLevel(none, farDist);
+  return lod;
+}
+
 /** 区块：路网网格 + 街区贴边建筑 + 地面（一个区一个组，支持流式开关） */
 function buildDistrictBlock(d: Scene['districts'][number], net: DistrictRoadNet): THREE.Group {
   const g = new THREE.Group();
@@ -278,7 +295,7 @@ function buildTraffic(scene: Scene): THREE.Group {
     const label = labelSprite(s.name, '#7ad0ff');
     label.position.y = 14;
     label.scale.set(44, 11, 1);
-    st.add(label);
+    st.add(detailSwitch(label, STATION_LABEL_LOD));
     g.add(st);
   }
   for (const r of scene.traffic.routes) {
@@ -292,9 +309,12 @@ function buildTraffic(scene: Scene): THREE.Group {
     if (r.kind === 'metro' || r.kind === 'boat' || r.kind === 'cable') {
       const mid = pts[Math.floor(pts.length / 2)];
       const label = labelSprite(r.name.replace('地铁', ''), '#' + r.color.toString(16).padStart(6, '0'));
-      label.position.set(mid.x, 10, mid.z);
+      label.position.set(0, 10, 0);
       label.scale.set(48, 12, 1);
-      g.add(label);
+      // 线路名牌远距隐藏（LOD 以线路中点定位）
+      const lod = detailSwitch(label, DECOR_LOD);
+      lod.position.copy(mid);
+      g.add(lod);
     }
   }
   return g;
@@ -426,19 +446,19 @@ export function buildWorld(scene: Scene): WorldHandle {
       lmGroup.add(gltf);
     });
 
-    // 名牌（专属高度或默认 34）
+    // 名牌 + 交互光圈（远距自动隐藏：装饰物 LOD）
+    const decor = new THREE.Group();
     const label = labelSprite(l.name);
     label.position.y = (LABEL_HEIGHT[l.id] ?? 34) + 8;
-    lmGroup.add(label);
-
-    // 交互光圈
+    decor.add(label);
     const ring = new THREE.Mesh(
       new THREE.RingGeometry((l.interactRadius ?? 600) - 4, l.interactRadius ?? 600, 48),
       new THREE.MeshBasicMaterial({ color: 0x1fb9a8, transparent: true, opacity: 0.18, side: THREE.DoubleSide }),
     );
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.3;
-    lmGroup.add(ring);
+    decor.add(ring);
+    lmGroup.add(detailSwitch(decor, DECOR_LOD));
 
     root.add(lmGroup);
   }
