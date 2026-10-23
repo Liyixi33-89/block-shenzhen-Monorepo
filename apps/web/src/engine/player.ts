@@ -145,7 +145,8 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
     // 观景台俯瞰：冻结地面移动，相机绕塔顶环视
     if (deckCam) {
       keys.clear();
-      avatar.position.set(deckCam.x, 0, deckCam.z);
+      // 化身站上观景台（塔顶），而非地面——否则被高塔塔身遮挡，俯瞰时看不到主角
+      avatar.position.set(deckCam.x, deckCam.height, deckCam.z);
       avatar.rotation.y = facing + Math.PI;
       const cx = deckCam.x + Math.sin(facing) * camDist * Math.cos(camPitch);
       const cz = deckCam.z + Math.cos(facing) * camDist * Math.cos(camPitch);
