@@ -7,7 +7,7 @@ import type { Scene } from '@block-sz/schema';
 import { BUILDERS, LABEL_HEIGHT } from './builders';
 import { buildSky, buildSea, buildLighting, buildDistantHills, type LightingRig } from './atmosphere';
 import { facadeMaterial, groundMaterial } from './textures';
-import { generateRoadNet, buildRoadMesh, type DistrictRoadNet, type RoadGraph, buildRoadGraph } from './roadnet';
+import { generateRoadNet, buildRoadMesh, type DistrictRoadNet, type RoadSeg, type RoadGraph, buildRoadGraph } from './roadnet';
 import { collision } from './collision';
 import { markSharedGeo, markSharedMat, disposeObjectAssets } from './assets';
 
@@ -442,6 +442,132 @@ function buildTraffic(scene: Scene): THREE.Group {
   return g;
 }
 
+// ---- 区际快速路（连接各区主干道，让景点之间的道路与车流贯通） ----
+// 各区路网彼此孤立（只在本区圆盘内），区际之间只有草地。此函数用「区中心→相邻区中心」
+// 的边界到边界快速路把陆上各区串联起来，形成横贯景点的干道网络；车辆在其上往返行驶。
+// 海相隔离的东岸区（大鹏/坪山）不连陆路，避免快速路跨海。
+
+/** 参与区际快速路联网的区划 id（陆地相连；排除跨海的大鹏/坪山） */
+const HIGHWAY_LAND_DISTRICTS = new Set(['futian', 'luohu', 'nanshan', 'baoan', 'longhua', 'longgang', 'yantian']);
+
+interface HighwayOut {
+  /** 快速路路面组（已就绪可入场景） */
+  group: THREE.Group;
+  /** 快速路线段（供车流在其上行驶） */
+  segs: RoadSeg[];
+}
+
+function buildInterDistrictHighways(scene: Scene): HighwayOut {
+  const out: HighwayOut = { group: new THREE.Group(), segs: [] };
+  const dists = scene.districts.filter(d => HIGHWAY_LAND_DISTRICTS.has(d.id));
+  if (dists.length < 2) return out;
+
+  // 区中心世界坐标
+  const center = new Map<string, { x: number; z: number; r: number }>();
+  for (const d of dists) {
+    const p = proj(d.center.lat, d.center.lng);
+    center.set(d.id, { x: p.x, z: p.z, r: d.cityRadius });
+  }
+  const ids = dists.map(d => d.id);
+
+  // 无向边（a<b 归一），含距离
+  const edges: Array<{ a: string; b: string; d: number }> = [];
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      const A = center.get(ids[i])!, B = center.get(ids[j])!;
+      edges.push({ a: ids[i], b: ids[j], d: Math.hypot(A.x - B.x, A.z - B.z) });
+    }
+  }
+  edges.sort((p, q) => p.d - q.d);
+
+  // 最小生成树（Prim）：保证全联网
+  const chosen: Array<{ a: string; b: string }> = [];
+  const inTree = new Set<string>([ids[0]]);
+  while (inTree.size < ids.length) {
+    // 找连接已选集合与未选集合的最短边
+    let best: { a: string; b: string; d: number } | null = null;
+    for (const e of edges) {
+      const aIn = inTree.has(e.a), bIn = inTree.has(e.b);
+      if (aIn === bIn) continue;
+      if (!best || e.d < best.d) best = e;
+    }
+    if (!best) break;
+    chosen.push({ a: best.a, b: best.b });
+    inTree.add(best.a);
+    inTree.add(best.b);
+  }
+
+  // 追加几条较短的非树边，让快速路更像路网而非纯星形/链形（去重）
+  const have = new Set<string>(chosen.map(e => [e.a, e.b].sort().join('|')));
+  for (const e of edges) {
+    if (have.has([e.a, e.b].sort().join('|'))) continue;
+    // 仅补 2500 单位内的近邻边，避免过度冗余
+    if (e.d > 2500) continue;
+    chosen.push({ a: e.a, b: e.b });
+    have.add([e.a, e.b].sort().join('|'));
+    if (chosen.length >= 12) break;
+  }
+
+  // 生成边界到边界的快速路段（起点/终点内收一个区半径+缓冲，避免压过区内建筑）
+  const MARGIN = 40;
+  for (const e of chosen) {
+    const A = center.get(e.a)!, B = center.get(e.b)!;
+    const len = Math.hypot(B.x - A.x, B.z - A.z) || 1;
+    const ux = (B.x - A.x) / len, uz = (B.z - A.z) / len;
+    const s1x = A.x + ux * (A.r + MARGIN), s1z = A.z + uz * (A.r + MARGIN);
+    const s2x = B.x - ux * (B.r + MARGIN), s2z = B.z - uz * (B.r + MARGIN);
+    // 沿行驶方向 u 的净位移；≤0 说明两区半径覆盖重叠/紧邻，区内自有路网已视觉连通，跳过
+    const net = (s2x - s1x) * ux + (s2z - s1z) * uz;
+    if (net < 60) continue;
+    const seg: RoadSeg = { x1: s1x, z1: s1z, x2: s2x, z2: s2z, halfW: 11, major: true };
+    out.segs.push(seg);
+  }
+
+  // 渲染快速路路面（与区内路网同风格：深灰 + 中线标线）
+  const geo: THREE.BufferGeometry[] = [];
+  for (const s of out.segs) {
+    const len = Math.hypot(s.x2 - s.x1, s.z2 - s.z1);
+    const pg = new THREE.PlaneGeometry(len + s.halfW * 2, s.halfW * 2, 1, 1);
+    pg.rotateX(-Math.PI / 2);
+    const ang = Math.atan2(s.z2 - s.z1, s.x2 - s.x1);
+    pg.rotateY(-ang);
+    pg.translate((s.x1 + s.x2) / 2, 0.055, (s.z1 + s.z2) / 2);
+    geo.push(pg);
+  }
+  if (geo.length) {
+    const merged = mergeGeometries(geo, false);
+    geo.forEach(gg => gg.dispose());
+    if (merged) {
+      const m = new THREE.Mesh(merged, new THREE.MeshStandardMaterial({ color: 0x3a4048, roughness: 0.95, metalness: 0 }));
+      m.receiveShadow = true;
+      out.group.add(m);
+    }
+    // 中线标线（分段虚线）
+    const marks: THREE.BufferGeometry[] = [];
+    const dash = 14, gap = 12;
+    for (const s of out.segs) {
+      const len = Math.hypot(s.x2 - s.x1, s.z2 - s.z1);
+      const dirX = (s.x2 - s.x1) / len, dirZ = (s.z2 - s.z1) / len;
+      let cur = 10;
+      while (cur + dash < len - 10) {
+        const g = new THREE.PlaneGeometry(dash, 1.6, 1, 1);
+        g.rotateX(-Math.PI / 2);
+        const ang = Math.atan2(s.z2 - s.z1, s.x2 - s.x1);
+        g.rotateY(-ang);
+        g.translate(s.x1 + dirX * (cur + dash / 2), 0.085, s.z1 + dirZ * (cur + dash / 2));
+        marks.push(g);
+        cur += dash + gap;
+      }
+    }
+    if (marks.length) {
+      const mm = mergeGeometries(marks, false);
+      marks.forEach(gg => gg.dispose());
+      if (mm) out.group.add(new THREE.Mesh(mm, new THREE.MeshBasicMaterial({ color: 0xd8d2b8 })));
+    }
+  }
+  return out;
+}
+
 // ---- 车流（动态车辆：沿主干道行驶，让街道"活"起来） ----
 // 用 InstancedMesh 把全城车辆合并为极少数 draw call：
 //   车身按 3 档色各 1 个实例网格 + 车顶 1 个 + 车轮 1 个 = 共 5 个 draw call。
@@ -472,10 +598,11 @@ const _wheelQuat = new THREE.Quaternion();
 const _scl = new THREE.Vector3(1, 1, 1);
 
 /**
- * 构建车流：在每个区的路网主干道上撒车，绑定一条线段往返行驶。
+ * 构建车流：在给定的交通走廊（区内主干道 + 区际快速路）上撒车往返行驶。
  * 用 InstancedMesh 合并渲染，返回 { group, update }。
+ * @param corridors 道路线段（世界坐标），车辆在其上往返行驶
  */
-function buildVehicles(nets: DistrictRoadNet[]): { group: THREE.Group; update: (t: number) => void } {
+function buildVehicles(corridors: Array<{ x1: number; z1: number; x2: number; z2: number }>): { group: THREE.Group; update: (t: number) => void } {
   const group = new THREE.Group();
   const cars: CarEntity[] = [];
   const cabinMat = mat(0x1a2a3a);
@@ -492,20 +619,16 @@ function buildVehicles(nets: DistrictRoadNet[]): { group: THREE.Group; update: (
   let seed = 21;
   const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
 
-  const CAR_PER_DISTRICT = 4;   // 每区主干道车辆数
+  // 全城交通走廊不足 → 不构建车辆
+  if (!corridors.length) return { group, update: () => {} };
+  const MAX_CARS = 64; // 全城车辆总量上限（区内+区际，兼顾热闹与性能）
+  const budget = Math.min(MAX_CARS, corridors.length);
   // 先收集所有车的色档与线段，再按色档分桶计实例数
   const plans: Array<{ color: number; seg: { x1: number; z1: number; x2: number; z2: number } }> = [];
-  for (const net of nets) {
-    const majors = net.segs.filter(s => s.major && Math.hypot(s.x2 - s.x1, s.z2 - s.z1) > 60);
-    if (!majors.length) continue;
-    const budget = Math.min(CAR_PER_DISTRICT, majors.length * 2);
-    for (let k = 0; k < budget; k++) {
-      const s = majors[k % majors.length];
-      plans.push({ color: Math.floor(rnd() * CAR_COLORS.length), seg: s });
-    }
+  for (let k = 0; k < budget; k++) {
+    const s = corridors[k % corridors.length];
+    plans.push({ color: Math.floor(rnd() * CAR_COLORS.length), seg: s });
   }
-  // 全城无主干道 → 不构建车辆
-  if (!plans.length) return { group, update: () => {} };
   // 初始化 InstancedMesh 容量
   const perColor = new Array(CAR_COLORS.length).fill(0);
   for (const p of plans) perColor[p.color]++;
@@ -743,9 +866,21 @@ export function buildWorld(scene: Scene): WorldHandle {
     }
   }
 
-  // 车流（动态车辆沿主干道行驶，让街道"活"起来）
-  const vehicles = nets.length ? buildVehicles(nets) : null;
-  if (vehicles && vehicles.group.children.length) {
+  // 区际快速路：把各区串联，让景点之间的道路与车流贯通（常驻渲染）
+  const highway = buildInterDistrictHighways(scene);
+  if (highway.group.children.length) root.add(highway.group);
+
+  // 车流（动态车辆：区内主干道 + 区际快速路往返行驶，让街道"活"起来）
+  // 收集全部交通走廊：区内 major 长段 + 区际快速路段
+  const corridors: Array<{ x1: number; z1: number; x2: number; z2: number }> = [];
+  for (const net of nets) {
+    for (const s of net.segs) {
+      if (s.major && Math.hypot(s.x2 - s.x1, s.z2 - s.z1) > 60) corridors.push(s);
+    }
+  }
+  for (const s of highway.segs) corridors.push(s);
+  const vehicles = buildVehicles(corridors);
+  if (vehicles.group.children.length) {
     root.add(vehicles.group);
     ticks.push(vehicles.update);
   }
