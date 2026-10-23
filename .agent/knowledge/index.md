@@ -7,7 +7,7 @@
 | 需要知道 | 读取 |
 |---|---|
 | 全库结构、怎么检索 | `index.md`（本文件） |
-| **共享/跨端**：内容 JSON 字段、领域术语、跨端常量、架构级决策 | `shared/` |
+| **共享/跨端**：内容 JSON 字段、schema 校验、领域术语、工程脚本、产品文档、架构级决策 | `shared/` |
 | **前端**：洋葱分层、引擎各系统模块、渲染性能、前端 ADR/FAQ | `frontend/` |
 | **后端**：DDD 架构、限界上下文模块、REST、灰度、后端 ADR/FAQ | `backend/` |
 
@@ -15,8 +15,11 @@
 | 文件 | 内容 |
 |---|---|
 | `data-model.md` | 内容 JSON（场景/地标/任务/NPC/交通/建造/经济）全字段语义 |
+| `schema.md` | `packages/schema` 包结构 + 校验规则（zod）+ 存档 schema + 消费入口 |
 | `glossary.md` | 领域术语 + 跨端常量 + 区主题色 |
 | `decisions.md` | 跨端架构决策 ADR-001/003/005 |
+| `engineering.md` | 工程验证脚本（`scripts/`：verify 三级管线 / check-docs 防腐 / check-layering 分层） |
+| `product.md` | 产品/架构长文档索引（`docs/`：前端架构方案 / admin 可配置化 PRD / 对比广州对标） |
 
 ### frontend/（apps/web）
 | 文件 | 内容 |
@@ -52,8 +55,10 @@
 
 ## 更新维护
 
-- 改动数据模型（schema/内容 JSON 新增字段）→ 更新 `shared/data-model.md`。
+- 改动数据模型（schema/内容 JSON 新增字段）→ 更新 `shared/data-model.md` + `shared/schema.md`。
 - 改前端引擎系统 → 更新 `frontend/modules.md`/`rendering.md`。
 - 改后端上下文/REST → 更新 `backend/modules.md`。
+- 改了 `scripts/` 验证脚本或门禁语义 → 更新 `shared/engineering.md`。
+- 新增/更新 `docs/` 长文档 → 更新 `shared/product.md` 索引与要点。
 - 做了重要技术选型或架构调整 → 在对应端 `decisions.md` 追加 ADR。
 - 被问过多次且可复答的问题 → 沉淀进对应端 `faq.md`。
