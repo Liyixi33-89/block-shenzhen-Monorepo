@@ -17,6 +17,8 @@ data/
 
 # ---- 日志 ----
 *.log
+# 本地度量留痕（verify.mjs 每次运行追加，不入库；README 见 .agent/metrics/）
+.agent/metrics/verify-log.jsonl
 
 # ---- 环境变量（含真实密钥，用 .env.example 提供模板） ----
 .env
