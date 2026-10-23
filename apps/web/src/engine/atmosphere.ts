@@ -34,81 +34,28 @@ export function buildSky(): { mesh: THREE.Mesh; mat: THREE.ShaderMaterial } {
   return { mesh: sky, mat };
 }
 
-/** 波光海面：ShaderMaterial GPU 波浪（零 CPU 顶点遍历）+ 菲涅尔假反射 + 像素波光 + 深浅水色。
- * 波浪从 CPU 每帧 2304 顶点遍历移至 GPU（平面仅 1x1 细分），
- * 由片元着色器用世界坐标多频正弦做法线扰动，并叠加波光闪烁与距离雾。 */
+/** 波光海面：大平面 + 顶点波动动画（低频省性能）。
+ * 注：曾尝试 ShaderMaterial GPU 波浪优化，但 ShaderMaterial 与 three 内置 fog/tonemapping
+ * chunk 的交互复杂（fog uniforms 需预声明、mvPosition 需手写），且影响场景渲染，
+ * 暂回退到 MeshStandardMaterial 稳定实现。 */
 export function buildSea(): { mesh: THREE.Mesh; update: (t: number) => void } {
-  const geo = new THREE.PlaneGeometry(16000, 16000, 1, 1);
+  const geo = new THREE.PlaneGeometry(16000, 16000, 48, 48);
   geo.rotateX(-Math.PI / 2);
-
-  const uniforms = {
-    uTime: { value: 0 },
-    uDeep: { value: new THREE.Color(0x1d4a5a) },     // 深海/深水色
-    uShallow: { value: new THREE.Color(0x2e6f9e) },  // 近岸浅水色
-    uSky: { value: new THREE.Color(0x9fc4dc) },      // 菲涅尔天空反射色
-    // fog:true 时 three 会 refreshFogUniforms 直接访问这些 .value，必须预声明避免崩溃；
-    // toneMappingExposure 由渲染器按 ACESFilmic 曝光逐帧覆盖，供 tonemapping_fragment 使用
-    fogColor: { value: new THREE.Color(0xbfd4e6) },
-    fogNear: { value: 1200 },
-    fogFar: { value: 5600 },
-    fogDensity: { value: 0.00025 },
-    toneMappingExposure: { value: 1 },
-  };
-
-  const mat = new THREE.ShaderMaterial({
-    uniforms,
-    fog: true, // 跟随 scene.fog（含昼夜雾色/远近变化），与天空/建筑雾一致
-    vertexShader: `
-      varying vec3 vWorld;
-      #include <fog_pars_vertex>
-      void main() {
-        vWorld = (modelMatrix * vec4(position, 1.0)).xyz;
-        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0); // fog_vertex 依赖 mvPosition
-        gl_Position = projectionMatrix * mvPosition;
-        #include <fog_vertex>
-      }
-    `,
-    fragmentShader: `
-      uniform float uTime;
-      uniform vec3 uDeep, uShallow, uSky;
-      varying vec3 vWorld;
-      #include <fog_pars_fragment>
-
-      void main() {
-        // 波浪法线扰动：多频正弦组合，替代顶点波浪（GPU 端，零 CPU 开销）
-        float ddx = sin(vWorld.x * 0.008 + uTime * 1.1) + cos(vWorld.z * 0.011 + uTime * 0.8)
-                  + sin((vWorld.x - vWorld.z) * 0.03 + uTime * 2.0) * 0.4;
-        float ddz = cos(vWorld.z * 0.008 - uTime * 1.1) + sin(vWorld.x * 0.013 - uTime * 0.9)
-                  + cos((vWorld.x + vWorld.z) * 0.02 + uTime * 1.6) * 0.4;
-        vec3 N = normalize(vec3(ddx * 0.12, 1.0, ddz * 0.12));
-
-        // 菲涅尔假反射：法线越倾斜越亮（反射天空色），平面处偏水色
-        float fres = 0.35 + 0.65 * pow(1.0 - clamp(N.y, 0.0, 1.0), 2.5);
-
-        // 深浅水色插值（近岸浅、远海深）
-        vec3 water = mix(uDeep, uShallow, clamp(vWorld.y + 8.0, 0.0, 1.0));
-        vec3 col = mix(water, uSky, fres * 0.8);
-
-        // 像素波光闪烁（方块化高光，随时间的网格噪声）
-        vec2 cell = floor(vWorld.xz * 0.5);
-        float sp = step(0.985, fract(sin(dot(cell, vec2(12.9898, 78.233)) + floor(uTime * 3.0)) * 43758.5453));
-        col += sp * 0.10;
-
-        gl_FragColor = vec4(col, 1.0);
-        #include <fog_fragment>
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
-      }
-    `,
-  });
-
+  const mat = new THREE.MeshStandardMaterial({ color: 0x2e6f9e, transparent: true, opacity: 0.96, roughness: 0.35, metalness: 0.05 });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.y = -8;
-  // 海面覆盖全图，禁视锥剔除避免边界闪没；ShaderMaterial 不参与投影，海洋远景无需阴影
-  mesh.frustumCulled = false;
+  mesh.receiveShadow = true;
+
+  const pos = geo.attributes.position as THREE.BufferAttribute;
+  const base = pos.array.slice() as Float32Array;
 
   function update(t: number) {
-    uniforms.uTime.value = t;
+    // 波浪：两组正弦叠加（振幅小、波长长）
+    for (let i = 0; i < pos.count; i++) {
+      const x = base[i * 3], z = base[i * 3 + 2];
+      pos.setY(i, Math.sin(x * 0.008 + t * 1.1) * 1.6 + Math.cos(z * 0.011 + t * 0.8) * 1.4);
+    }
+    pos.needsUpdate = true;
   }
   return { mesh, update };
 }
