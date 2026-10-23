@@ -645,13 +645,18 @@ function buildVehicles(corridors: Array<{ x1: number; z1: number; x2: number; z2
 
   // 全城交通走廊不足 → 不构建车辆
   if (!corridors.length) return { group, update: () => {} };
-  const MAX_CARS = 64; // 全城车辆总量上限（区内+区际，兼顾热闹与性能）
-  const budget = Math.min(MAX_CARS, corridors.length);
-  // 先收集所有车的色档与线段，再按色档分桶计实例数
-  const plans: Array<{ color: number; seg: { x1: number; z1: number; x2: number; z2: number } }> = [];
-  for (let k = 0; k < budget; k++) {
-    const s = corridors[k % corridors.length];
-    plans.push({ color: Math.floor(rnd() * CAR_COLORS.length), seg: s });
+  const MAX_CARS = 110; // 全城车辆总量上限（区内+区际，兼顾热闹与性能；InstancedMesh 高效，110 辆仅 5 个 draw call）
+  // 按走廊长度分配车辆数（约每 130 单位 1 辆），让车流在长干道上密集、玩家视野内总有车
+  const plans: Array<{ color: number; seg: { x1: number; z1: number; x2: number; z2: number }; tt: number }> = [];
+  let total = 0;
+  for (const s of corridors) {
+    const len = Math.hypot(s.x2 - s.x1, s.z2 - s.z1) || 1;
+    const n = Math.max(1, Math.min(6, Math.floor(len / 130))); // 每走廊 1~6 辆，防止单走廊塞满
+    for (let i = 0; i < n; i++) {
+      if (total >= MAX_CARS) break;
+      plans.push({ color: Math.floor(rnd() * CAR_COLORS.length), seg: s, tt: (i + rnd()) / n });
+      total++;
+    }
   }
   // 初始化 InstancedMesh 容量
   const perColor = new Array(CAR_COLORS.length).fill(0);
@@ -666,7 +671,7 @@ function buildVehicles(corridors: Array<{ x1: number; z1: number; x2: number; z2
     cars.push({
       colorIdx: p.color, instIdx: colorPtr[p.color]++,
       x1: s.x1, z1: s.z1, x2: s.x2, z2: s.z2,
-      t: rnd(),
+      t: p.tt,
       dir: rnd() > 0.5 ? 1 : -1,
       speed: 16 + rnd() * 10, // 略慢于玩家步行(26)，让玩家能追上
     });
