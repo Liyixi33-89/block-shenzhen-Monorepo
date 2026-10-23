@@ -19,30 +19,41 @@ description: "按本项目标准做一次代码审查。当用户要审查/评�
 
 2. **按标准逐项核查**
 
-   **a. 分层（前端）**
+   **① 通用审查清单（所有改动必过，对照 AGENTS.md）**
+   - [ ] 编译/类型检查过了吗（AI 代码不能豁免 CI）
+   - [ ] 错误路径处理了吗（网络失败/空数据/权限不足）
+   - [ ] 有硬编码的魔法值/密钥/路径吗
+   - [ ] 遵守项目硬约束吗（分层/最小改动/不装依赖/不提交密钥）
+   - [ ] 有过度设计吗（AI 爱加没用的抽象层和防御代码）
+   - [ ] 改动面最小吗（顺手重构是大忌，难 review）
+
+   **② 分层（前端）**
    - 改 `apps/web` 时检查：domain 是否 import 了 three/Vue/fetch；services 是否 import engine；views 是否直接 fetch；engine 是否被内层 import。
    - 跑 `node scripts/check-layering.mjs`。
 
-   **b. 后端 DDD**
+   **③ 后端 DDD**
    - 改 `apps/server-java` 时：domain 层是否有 Spring/JPA/Jackson 依赖；依赖是否单向。
 
-   **c. 性能（每帧/渲染）**
+   **④ 性能（每帧/渲染）**
    - `update` 内是否 `new` 对象（Vector3/Color/Matrix4）→ 应复用模块级变量。
    - 大量实例是否用 InstancedMesh；静态 mesh 是否用 mergeStaticGroup。
    - 远距装饰/名牌是否 LOD。
 
-   **d. 资源/内存**
+   **⑤ 资源/内存**
    - 动态 geometry/material/texture（含 CanvasTexture）dispose 是否释放。
    - engine/player dispose 是否完整；window 事件监听是否移除。
    - 重建世界前是否 `collision.clear()`。
    - InstancedMesh 复合变换是否写进四元数。
 
-   **e. 内容/schema**
+   **⑥ 内容/schema**
    - 内容改动是否过 `validateScene`；发布版本是否 semver 递增。
    - 新增存档字段是否两处映射都改（saveCodec）。
 
-   **f. 最小改动**
+   **⑦ 最小改动**
    - 是否只改任务要求；是否重构/重命名超出范围；是否装新依赖/改配置文件。
+
+   **⑧ 信任校准**（按 §rules.md 分级）
+   - 低信任区（安全/数据迁移/破坏性）改动：标注「人写为主」，只给方案，不擅自实现。
 
 3. **运行验证命令**
    ```bash
@@ -59,6 +70,6 @@ description: "按本项目标准做一次代码审查。当用户要审查/评�
 - 无新增分层违规；构建通过；性能/泄漏项无高危。
 
 ## 参考
-- `.agent/rules.md`（全部规约）
+- `.agent/rules.md`（全部规约，含信任校准分级）
 - `.agent/pitfalls.md`（已知坑，重点核对）
 - `.agent/architecture.md`（分层/DDD）

@@ -33,6 +33,14 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # Maven 依赖缓存（~/.m2），避免每次全量下载，加速后端构建
+      - name: Cache Maven repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ hashFiles('apps/server-java/pom.xml') }}
+          restore-keys: maven-
+
       - name: Install frontend deps
         run: npm ci
 
