@@ -20,7 +20,7 @@ export interface MainloopRuntime {
   worldTick: ((t: number) => void) | null;
   streaming: { update(px: number, pz: number): void } | null;
   lightingRig: { followShadow(x: number, z: number): void } | null;
-  npc: { tick?(t: number, dt: number): void } | null;
+  npc: { tick?(t: number, dt: number, playerPos?: { x: number; z: number }): void } | null;
   dayNight: { update(dt: number): void; clockString(): string; isNight(): boolean } | null;
   weather: { update(dt: number): void; label: string } | null;
   transit: {

@@ -190,7 +190,7 @@ export class GameEngine {
           renderer: this.renderer,
         });
 
-        // 出生点（回档优先）
+        // 出生点：以本次选择为准（玩家在出生点界面主动挑选节点，必须落位到所选节点）
         const spawn = this.sceneData!.spawnPoints.find(s => s.id === this.opts.spawnId)
           ?? this.sceneData!.spawnPoints[0];
         const p = proj(spawn.latlng.lat, spawn.latlng.lng);
@@ -199,9 +199,6 @@ export class GameEngine {
         const sx = p.x + off, sz = p.z + off;
         const faceAngle = Math.atan2(sx - p.x, sz - p.z);
         this.player = createPlayer(this.camera, { x: sx, z: sz, facing: faceAngle });
-        if (this.saved?.pos && (this.saved.pos.x || this.saved.pos.z || this.saved.pos.y)) {
-          this.player.teleport(this.saved.pos.x, this.saved.pos.z, this.saved.facing);
-        }
         this.three.add(this.player.avatar);
         this.lastPos = { x: sx, z: sz };
         // 阴影相机初位对齐出生点（否则玩家出生在远处时身边无阴影）
@@ -328,7 +325,7 @@ export class GameEngine {
           actions: {
             camera: () => { if (this.photoMode) { this.photoMode.toggle(); this.state.photoActive = this.photoMode.active; } },
             shutter: () => { if (this.photoMode?.active) this.photoMode.shoot(this.camera); },
-            interact: () => this.onKey(new KeyboardEvent('keydown', { key: 'e' })),
+            interact: () => this.simKey('e'),
             build: () => this.buildMode?.toggle(),
             teleport: () => this.simKey('t'),
             quest: () => this.simKey('q'),
