@@ -1,0 +1,57 @@
+name: verify
+
+# 独立审计门禁：PR 与 push 到 main 时，在干净的 Linux 环境全量跑三级验证管线。
+# 与本地 `node scripts/verify.mjs <level>` 共用同一脚本（跨平台），保证 CI/本地同一条代码路径。
+# 不允许 SKIP_BACKEND（CI 是硬门禁）。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: # 手动触发（可选）
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: verify-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Java (Maven)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install frontend deps
+        run: npm ci
+
+      # 三级验证管线：quick（守护/防腐/compile）+ commit（全量构建）。tsc 为 advisory 项不阻断。
+      - name: Run verify (quick)
+        run: node scripts/verify.mjs quick
+
+      - name: Run verify (commit)
+        run: node scripts/verify.mjs commit
+
+      # 防腐二次确认：AGENTS.md 与 .agent 分册引用完整性（verify.mjs 内含，这里冗余展示可读性）
+      - name: Docs anti-rot check
+        run: node scripts/check-docs.mjs
+
+      # 度量留痕：上传本地 verify 日志作为 artifact（不提交仓库）
+      - name: Upload verify metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-log
+          path: .agent/metrics/verify-log.jsonl
+          if-no-files-found: ignore
