@@ -11,6 +11,8 @@ export interface SaveExtras {
   pos: { x: number; y: number; z: number };
   facing: number;
   ascensionStage: string;
+  /** 角色外观定制（皮肤参数 + 自定义皮肤 dataURL；null 表示未定制） */
+  profile: PlayerSave['profile'];
 }
 
 /** 序列化：玩法快照 + 玩家态 → PlayerSave */
@@ -41,6 +43,7 @@ export function snapshotToSave(snap: GameplaySnapshot, extras: SaveExtras): Play
     dailyCounters: snap.dailyCounters,
     dailyStamp: snap.dailyStamp,
     souvenirs: snap.souvenirs,
+    profile: extras.profile,
   } as PlayerSave;
 }
 

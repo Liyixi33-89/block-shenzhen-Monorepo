@@ -13,12 +13,16 @@ const gameContainer = ref<HTMLDivElement>();
 onMounted(() => { void shell.boot(); });
 
 /** HUD 面板开关（三面板互斥由快捷键层保证，此处直接翻转） */
-function togglePanel(panel: 'quest' | 'album' | 'keys') {
+function togglePanel(panel: 'quest' | 'album' | 'keys' | 'char' | 'map') {
   if (panel === 'quest') shell.questPanel.value = !shell.questPanel.value;
   if (panel === 'album') shell.albumPanel.value = !shell.albumPanel.value;
   if (panel === 'keys') shell.keysPanel.value = !shell.keysPanel.value;
+  if (panel === 'char') shell.charPanel.value = !shell.charPanel.value;
+  if (panel === 'map') shell.mapPanel.value = !shell.mapPanel.value;
   const open = panel === 'quest' ? shell.questPanel.value
-    : panel === 'album' ? shell.albumPanel.value : shell.keysPanel.value;
+    : panel === 'album' ? shell.albumPanel.value
+      : panel === 'keys' ? shell.keysPanel.value
+        : panel === 'char' ? shell.charPanel.value : shell.mapPanel.value;
   shell.engRef.value?.analytics?.track('ui_panel', { panel, open });
 }
 </script>
@@ -43,6 +47,8 @@ function togglePanel(panel: 'quest' | 'album' | 'keys') {
       :quest-panel="shell.questPanel.value"
       :album-panel="shell.albumPanel.value"
       :keys-panel="shell.keysPanel.value"
+      :char-panel="shell.charPanel.value"
+      :map-panel="shell.mapPanel.value"
       :loading="shell.loading.value"
       @toggle="togglePanel"
       @exit="shell.exitGame()"

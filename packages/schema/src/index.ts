@@ -69,6 +69,25 @@ export const playerSaveSchema = z.object({
   dailyStamp: z.string().default(''),
   /** 已收集纪念品 id（纪念品图鉴：到访/购买/任务获取） */
   souvenirs: z.array(z.string()).default([]),
+  /** 角色外观定制：皮肤参数 + 自定义皮肤（64×64 PNG dataURL），null 表示未定制 */
+  profile: z.object({
+    name: z.string().default(''),
+    skinParams: z.object({
+      gender: z.enum(['m', 'f']).default('m'),
+      skin: z.string().default('#f3d2b3'),
+      hair: z.string().default('#1a1410'),
+      hairStyle: z.enum(['short', 'long', 'bald']).default('short'),
+      shirt: z.string().default('#c8282a'),
+      pants: z.string().default('#2a3a5a'),
+      shoes: z.string().default('#222222'),
+      longSleeve: z.boolean().default(false),
+      shorts: z.boolean().default(false),
+      glasses: z.boolean().default(false),
+      dress: z.boolean().default(false),
+      seed: z.number().default(1),
+    }).default({}),
+    customSkin: z.string().default(''),
+  }).nullable().default(null),
 });
 
 export type PlayerSave = z.infer<typeof playerSaveSchema>;

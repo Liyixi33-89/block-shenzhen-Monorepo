@@ -30,6 +30,8 @@ export function useGameShell() {
   const questPanel = ref(false);
   const albumPanel = ref(false);
   const keysPanel = ref(false);
+  const charPanel = ref(false);
+  const mapPanel = ref(false);
 
   let hudTimer: number | undefined;
   let toastId = 0;
@@ -159,7 +161,9 @@ export function useGameShell() {
     if (k === 'q') { questPanel.value = !questPanel.value; engRef.value?.analytics?.track('ui_panel', { panel: 'quest', open: questPanel.value }); }
     if (k === 'p') { albumPanel.value = !albumPanel.value; engRef.value?.analytics?.track('ui_panel', { panel: 'album', open: albumPanel.value }); }
     if (k === 'k') { keysPanel.value = !keysPanel.value; engRef.value?.analytics?.track('ui_panel', { panel: 'keys', open: keysPanel.value }); }
-    if (k === 'escape') { questPanel.value = false; albumPanel.value = false; keysPanel.value = false; }
+    if (k === 'x') { charPanel.value = !charPanel.value; engRef.value?.analytics?.track('ui_panel', { panel: 'char', open: charPanel.value }); }
+    if (k === 'm') { mapPanel.value = !mapPanel.value; engRef.value?.analytics?.track('ui_panel', { panel: 'map', open: mapPanel.value }); }
+    if (k === 'escape') { questPanel.value = false; albumPanel.value = false; keysPanel.value = false; charPanel.value = false; mapPanel.value = false; }
   }
 
   function exitGame() {
@@ -171,6 +175,8 @@ export function useGameShell() {
     questPanel.value = false;
     albumPanel.value = false;
     keysPanel.value = false;
+    charPanel.value = false;
+    mapPanel.value = false;
     if (mode.value === 'game') mode.value = 'browser';
   }
 
@@ -180,7 +186,7 @@ export function useGameShell() {
     serverOk, scene, mode, spawnId,
     loading, loadingStep, loadingPct,
     engine, engRef, hud, toasts, quests, album,
-    questPanel, albumPanel, keysPanel,
+    questPanel, albumPanel, keysPanel, charPanel, mapPanel,
     ic, boot, enterGame, startGame, exitGame, pushToast,
   };
 }

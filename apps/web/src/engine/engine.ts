@@ -4,7 +4,7 @@
 // 调试契约：window.__engine 字段是 e2e 脚本的对外接口，禁止删除。
 import * as THREE from 'three';
 import { proj } from '@block-sz/shared';
-import type { Scene as SceneData, Landmark } from '@block-sz/schema';
+import type { Scene as SceneData, Landmark, PlayerSave } from '@block-sz/schema';
 import { buildWorld } from './world';
 import { createPlayer } from './player';
 import { Gameplay, type GameplaySnapshot } from '../domain/gameplay';
@@ -52,6 +52,8 @@ export class GameEngine {
   sceneData: SceneData | null = null;
   world: THREE.Group | null = null;
   player: ReturnType<typeof createPlayer> | null = null;
+  /** 角色外观定制（皮肤参数 + 自定义皮肤；null=未定制），由角色面板读写 */
+  profile: PlayerSave['profile'] = null;
   gameplay: Gameplay | null = null;
   photoMode: PhotoMode | null = null;
   transit: TransitSystem | null = null;
@@ -72,6 +74,8 @@ export class GameEngine {
   session: CloudSession | null = null;
   /** 全城道路图（NPC 游走；无路网为 null） */
   roadGraph: RoadGraph | null = null;
+  /** 地图用道路线段（区际快速路 + 区内主干道），供全城地图/小地图绘制 */
+  mapRoads: Array<{ x1: number; z1: number; x2: number; z2: number; kind: 'hwy' | 'major' }> = [];
   /** 分块流式加载控制器（按玩家位置挂载/卸载街区） */
   streaming: { update(px: number, pz: number): void } | null = null;
   /** 光照句柄（阴影相机跟随玩家） */
@@ -181,6 +185,7 @@ export class GameEngine {
         this.world = built.root;
         worldTick = built.tick;
         this.roadGraph = built.roadGraph;
+        this.mapRoads = built.mapRoads;
         this.streaming = built.streaming;
         this.lightingRig = built.lighting;
         this.worldHandle = built;
@@ -203,6 +208,11 @@ export class GameEngine {
         const sx = p.x + off, sz = p.z + off;
         const faceAngle = Math.atan2(sx - p.x, sz - p.z);
         this.player = createPlayer(this.camera, { x: sx, z: sz, facing: faceAngle });
+        // 注入角色外观（存档 profile），无存档则用默认皮肤
+        this.profile = this.saved?.profile ?? null;
+        if (this.profile) {
+          this.player.applySkin(this.profile.skinParams, this.profile.customSkin || null);
+        }
         this.three.add(this.player.avatar);
         this.lastPos = { x: sx, z: sz };
         // 阴影相机初位对齐出生点（否则玩家出生在远处时身边无阴影）
@@ -464,10 +474,25 @@ export class GameEngine {
       pos: { x: this.player.position.x, y: 0, z: this.player.position.z },
       facing: this.player.facing,
       ascensionStage: this.ascension?.stageId ?? '',
+      profile: this.profile,
     });
     // createdAt 稳定（首次存档时间不变）
     save.createdAt = this.createdAt ??= new Date().toISOString();
     try { await uploadSave(this.session, save); } catch { /* 离线静默 */ }
+  }
+
+  /** 应用角色外观（角色定制面板调用）：更新化身皮肤并持久化到存档 */
+  applyProfile(profile: PlayerSave['profile']) {
+    this.profile = profile;
+    if (this.player && profile) {
+      this.player.applySkin(profile.skinParams, profile.customSkin || null);
+    }
+    void this.saveNow();
+  }
+
+  /** 传送玩家到世界坐标（全城地图「前往」调用） */
+  teleport(x: number, z: number) {
+    this.player?.teleport(x, z);
   }
 
   /** 装配观景台登顶控制器（依赖注入，见 engine/deck） */

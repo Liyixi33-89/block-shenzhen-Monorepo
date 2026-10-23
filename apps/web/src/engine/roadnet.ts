@@ -183,6 +183,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const ROAD_MAIN_COLOR = 0x3a4048;   // 主干道深灰
 const ROAD_SIDE_COLOR = 0x464d56;   // 支路灰
+const SIDEWALK_COLOR = 0x565c66;     // 人行道浅灰
 const MARK_COLOR = 0xd8d2b8;        // 标线米黄
 
 /** 把一个区的路网渲染成 THREE.Group（路面 + 主干标线，全部静态可合并） */
@@ -214,6 +215,33 @@ export function buildRoadMesh(net: DistrictRoadNet): THREE.Group {
   };
   addMerged(geoMajor, ROAD_MAIN_COLOR);
   addMerged(geoSide, ROAD_SIDE_COLOR);
+
+  // 主干道人行道：路面两侧各 1.6 宽浅灰地砖（提升道路真实感）
+  const sidewalks: THREE.BufferGeometry[] = [];
+  for (const s of net.segs) {
+    if (!s.major) continue;
+    const len = Math.hypot(s.x2 - s.x1, s.z2 - s.z1);
+    if (len < 1) continue;
+    const ang = Math.atan2(s.z2 - s.z1, s.x2 - s.x1);
+    const cx = (s.x1 + s.x2) / 2, cz = (s.z1 + s.z2) / 2;
+    const px = -Math.sin(ang), pz = Math.cos(ang); // 路面法向
+    for (const side of [-1, 1]) {
+      const geo = new THREE.PlaneGeometry(len + s.halfW * 2 + 2.4, 1.6, 1, 1);
+      geo.rotateX(-Math.PI / 2);
+      geo.rotateY(-ang);
+      geo.translate(cx + px * side * (s.halfW + 0.8), 0.07, cz + pz * side * (s.halfW + 0.8));
+      sidewalks.push(geo);
+    }
+  }
+  if (sidewalks.length) {
+    const merged = mergeGeometries(sidewalks, false);
+    sidewalks.forEach(gg => gg.dispose());
+    if (merged) {
+      const m = new THREE.Mesh(merged, new THREE.MeshStandardMaterial({ color: SIDEWALK_COLOR, roughness: 1, metalness: 0 }));
+      m.receiveShadow = true;
+      g.add(m);
+    }
+  }
 
   // 主干道中线标线（分段虚线）
   const marks: THREE.BufferGeometry[] = [];

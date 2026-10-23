@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import type { Landmark } from '@block-sz/schema';
 import { collision } from './collision';
+import { Character, makeSkinCanvas, defaultSkin, type SkinParams } from './character';
 
 export interface PlayerInit {
   x: number;
@@ -43,6 +44,8 @@ export interface PlayerAPI {
   /** 视角/缩放外部注入（移动端触屏用；dx dy 为屏幕像素增量） */
   look(dx: number, dy: number): void;
   zoom(d: number): void;
+  /** 应用角色皮肤（角色定制面板/存档注入） */
+  applySkin(params: SkinParams, customSkinDataUrl?: string | null): void;
 }
 
 export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit): PlayerAPI {
@@ -62,43 +65,12 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
   // 速度加成倍率（speed 道具效果，由引擎每帧注入）
   let speedBoost = 1;
 
-  // 玩家化身：像素小人（方块身体 + 头 + 可摆动四肢）
-  // P1：四肢做成独立 pivot，行走时摆动、奔跑加速、闲置微呼吸
-  const avatar = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(2.6, 4.4, 1.6),
-    new THREE.MeshStandardMaterial({ color: 0xe8554d, roughness: 0.6 }),
-  );
-  body.position.y = 3.2;
-  body.castShadow = true;
-  avatar.add(body);
-  const head = new THREE.Mesh(
-    new THREE.BoxGeometry(2.2, 2.2, 2.2),
-    new THREE.MeshStandardMaterial({ color: 0xf2c9a0, roughness: 0.8 }),
-  );
-  head.position.y = 6.5;
-  head.castShadow = true;
-  avatar.add(head);
-
-  // 四肢 pivot（绕各自根部旋转，摆动时模拟走路）
-  const legGeo = new THREE.BoxGeometry(1.1, 2.4, 1.3);
-  const armGeo = new THREE.BoxGeometry(0.9, 2.0, 0.9);
-  const legMat = new THREE.MeshStandardMaterial({ color: 0x2a4a6a, roughness: 0.6 });
-  const armMat = new THREE.MeshStandardMaterial({ color: 0xe8554d, roughness: 0.6 });
-  const mkLimb = (geo: THREE.BoxGeometry, mat: THREE.Material, y: number, dx: number, dz: number) => {
-    const pivot = new THREE.Group();
-    pivot.position.set(dx, y, dz);
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.y = geo.parameters.height / 2;
-    mesh.castShadow = true;
-    pivot.add(mesh);
-    avatar.add(pivot);
-    return pivot;
-  };
-  const legL = mkLimb(legGeo, legMat, 0.9, -0.55, 0);
-  const legR = mkLimb(legGeo, legMat, 0.9, 0.55, 0);
-  const armL = mkLimb(armGeo, armMat, 3.2, -1.7, 0);
-  const armR = mkLimb(armGeo, armMat, 3.2, 1.7, 0);
+  // 玩家化身：皮肤化方块角色（Minecraft 风格，可自定义肤色/发型/服装/配饰）
+  // 皮肤参数由引擎在创建时经 applySkin 注入（存档 profile）；默认用随机皮肤
+  let skinParams: SkinParams = defaultSkin();
+  let customSkin: string | null = null;
+  const char = new Character(makeSkinCanvas(skinParams));
+  const avatar = char.group;
 
   // 小地图标记锥（头顶）
   const cone = new THREE.Mesh(
@@ -108,6 +80,11 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
   cone.position.y = 10;
   cone.castShadow = true;
   avatar.add(cone);
+
+  /** 按皮肤参数重生成贴图并换肤 */
+  function refreshSkin() {
+    char.setSkin(makeSkinCanvas({ ...skinParams, seed: skinParams.seed || Math.floor(Math.random() * 1e9) }));
+  }
 
   // 动画状态
   let walkPhase = 0;
@@ -189,10 +166,8 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
       // 四肢平展滑翔姿态
       walkPhase += dt * 6;
       const s = Math.sin(walkPhase);
-      armL.rotation.x = -1.4; armR.rotation.x = -1.4;   // 双臂后掠
-      legL.rotation.x = s * 0.12; legR.rotation.x = -s * 0.12;
-      body.position.y = 3.2;
-      head.position.y = 6.5;
+      char.armL.rotation.x = -1.4; char.armR.rotation.x = -1.4;   // 双臂后掠
+      char.legL.rotation.x = s * 0.12; char.legR.rotation.x = -s * 0.12;
       // 相机跟随（更高更远，看向空中化身）
       const fcx = position.x + Math.sin(facing) * camDist * Math.cos(camPitch);
       const fcz = position.z + Math.cos(facing) * camDist * Math.cos(camPitch);
@@ -217,21 +192,10 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
       position.z = moved.z;
     }
 
-    // P1 角色动画：行走摆臂摆腿 + 身体起伏；闲置微呼吸
+    // 角色动画：行走摆臂摆腿 + 闲置微呼吸（广州皮肤角色动画）
     moving = !!(mx || mz);
     const run = moving && keys.has('shift');
-    const rate = (run ? RUN : WALK) / 2.6;       // 摆臂频率随速度
-    const swing = run ? 0.85 : 0.55;             // 奔跑幅度更大
-    if (moving) walkPhase += dt * rate;
-    else walkPhase = 0;
-    const ph = moving ? walkPhase : 0;
-    const s = Math.sin(ph), c = Math.cos(ph);
-    legL.rotation.x = s * swing;
-    legR.rotation.x = -s * swing;
-    armL.rotation.x = -s * swing;
-    armR.rotation.x = s * swing;
-    body.position.y = moving ? 3.2 + Math.abs(c) * 0.28 : 3.2 + Math.sin(performance.now() * 0.002) * 0.08;
-    head.position.y = 6.5 + (moving ? Math.abs(c) * 0.2 : 0);
+    char.update(dt, moving ? (run ? RUN : WALK) * speedBoost : 0);
 
     // 相机跟随（第三人称，绕玩家旋转）
     const cx = position.x + Math.sin(facing) * camDist * Math.cos(camPitch);
@@ -253,13 +217,9 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
     window.removeEventListener('mouseup', onUp);
     window.removeEventListener('wheel', onWheel);
     // 释放化身独占的几何/材质（每次 createPlayer 新建，重入游戏须释放防 GPU 泄漏）
-    avatar.traverse(o => {
-      const m = o as THREE.Mesh;
-      if ((m as any).isMesh) {
-        m.geometry.dispose();
-        (m.material as THREE.Material).dispose();
-      }
-    });
+    char.dispose();
+    if (cone.geometry) cone.geometry.dispose();
+    (cone.material as THREE.Material).dispose();
     avatar.removeFromParent();
   }
 
@@ -283,6 +243,23 @@ export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit):
     /** 缩放外部注入（触屏捏合） */
     zoom(d: number) {
       camDist = THREE.MathUtils.clamp(camDist + d, 12, 90);
+    },
+    /** 应用角色皮肤：从皮肤参数重生成贴图（支持自定义皮肤 dataURL 覆盖） */
+    applySkin(params: SkinParams, customSkinDataUrl?: string | null) {
+      skinParams = { ...params };
+      customSkin = customSkinDataUrl || null;
+      if (customSkin) {
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement('canvas');
+          c.width = c.height = 64;
+          c.getContext('2d')!.drawImage(img, 0, 0);
+          char.setSkin(c);
+        };
+        img.src = customSkin;
+      } else {
+        refreshSkin();
+      }
     },
     /** 观景台登顶俯瞰：active 时相机绕塔顶环视；否则恢复正常跟随 */
     deckMode(active: boolean, x?: number, z?: number, height?: number) {

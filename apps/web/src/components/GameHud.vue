@@ -15,11 +15,13 @@ const props = defineProps<{
   questPanel: boolean;
   albumPanel: boolean;
   keysPanel: boolean;
+  charPanel: boolean;
+  mapPanel: boolean;
   loading: boolean;
 }>();
 
 const emit = defineEmits<{
-  (e: 'toggle', panel: 'quest' | 'album' | 'keys'): void;
+  (e: 'toggle', panel: 'quest' | 'album' | 'keys' | 'char' | 'map'): void;
   (e: 'exit'): void;
 }>();
 
@@ -28,6 +30,9 @@ function ic(name: IconName, size = 16) {
   return iconSvg(name, size);
 }
 import { iconSvg } from '../engine/icons';
+import CharacterPanel from './CharacterPanel.vue';
+import MapPanel from './MapPanel.vue';
+import Minimap from './Minimap.vue';
 
 const photoCount = () => props.album.length;
 const questDoneCount = () => props.quests.filter(q => q.done).length;
@@ -80,6 +85,7 @@ const KEYMAP: Array<{ key: string; desc: string }> = isTouch ? [
     <div v-if="hud.landmark" class="hud-box hud-landmark">
       <span class="icon" v-html="ic('visit')" /> {{ hud.landmark }} <span class="muted">（已到访 · <kbd>C</kbd> 拍照）</span>
     </div>
+    <Minimap :eng-ref="engRef" :visible="true" />
     <div class="hud-box hud-br">
       <button class="hud-mini" @click="emit('toggle', 'quest')">
         <span class="icon" v-html="ic('quest')" /> 任务 <kbd>Q</kbd>
@@ -90,6 +96,12 @@ const KEYMAP: Array<{ key: string; desc: string }> = isTouch ? [
       <button class="hud-mini" @click="emit('toggle', 'keys')">
         <span class="icon" v-html="ic('keys')" /> 键位 <kbd>K</kbd>
       </button>
+      <button class="hud-mini" @click="emit('toggle', 'char')">
+        <span class="icon" v-html="ic('char')" /> 角色 <kbd>X</kbd>
+      </button>
+      <button class="hud-mini" @click="emit('toggle', 'map')">
+        <span class="icon" v-html="ic('map')" /> 地图 <kbd>M</kbd>
+      </button>
       <button class="hud-exit" @click="emit('exit')">
         <span class="icon" v-html="ic('exit')" /> 退出世界
       </button>
@@ -97,7 +109,7 @@ const KEYMAP: Array<{ key: string; desc: string }> = isTouch ? [
     <div v-if="hud.photoMode" class="hud-photo-badge">
       <span class="icon" v-html="ic('camera')" /> 相机模式
     </div>
-    <div class="hud-tip">C 相机 · B 建造 · T 传送 · E 乘车 · <b>K</b> 键位说明</div>
+    <div class="hud-tip">C 相机 · B 建造 · T 传送 · E 乘车 · <b>X</b> 角色 · <b>M</b> 地图 · <b>K</b> 键位说明</div>
   </div>
 
   <!-- 事件 toast -->
@@ -159,4 +171,10 @@ const KEYMAP: Array<{ key: string; desc: string }> = isTouch ? [
       </div>
     </div>
   </div>
+
+  <!-- 角色定制 -->
+  <CharacterPanel :eng-ref="engRef" :visible="charPanel" @close="emit('toggle', 'char')" />
+
+  <!-- 全城地图 -->
+  <MapPanel :eng-ref="engRef" :visible="mapPanel" @close="emit('toggle', 'map')" />
 </template>

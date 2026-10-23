@@ -4,6 +4,7 @@ export type IconName =
   | 'location' | 'money' | 'photo' | 'quest' | 'visit' | 'build' | 'teleport'
   | 'camera' | 'metro' | 'bus' | 'map' | 'exit' | 'lock' | 'clock' | 'check'
   | 'building' | 'tree' | 'train' | 'lamp' | 'box' | 'keys' | 'info' | 'gamepad'
+  | 'char'
   | 'sun' | 'rain' | 'snow';
 
 const P: Record<IconName, string> = {
@@ -53,6 +54,8 @@ const P: Record<IconName, string> = {
   info: '<circle cx="8" cy="8" r="6.2"/><path d="M8 7.2v4M8 4.8v.01"/>',
   // 手柄（进入世界）
   gamepad: '<path d="M5 5h6a4.5 4.5 0 014.4 5.4c-.3 1.4-1.7 2.2-3 1.5L10.2 10H5.8L3.6 11.9c-1.3.7-2.7-.1-3-1.5A4.5 4.5 0 015 5z"/><path d="M5.5 7v2M4.5 8h2M10.5 7.5v.01M12 8.5v.01"/>',
+  // 角色：人形
+  char: '<circle cx="8" cy="4.2" r="2.6"/><path d="M2.8 14.2c0-2.9 2.3-5 5.2-5s5.2 2.1 5.2 5z"/>',
   // 晴（太阳）
   sun: '<circle cx="8" cy="8" r="3.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4"/>',
   // 雨（云+雨滴）

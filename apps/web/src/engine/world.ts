@@ -542,6 +542,30 @@ function buildInterDistrictHighways(scene: Scene): HighwayOut {
       m.receiveShadow = true;
       out.group.add(m);
     }
+    // 快速路人行道：路面两侧浅灰地砖
+    const sidewalks: THREE.BufferGeometry[] = [];
+    for (const s of out.segs) {
+      const len = Math.hypot(s.x2 - s.x1, s.z2 - s.z1);
+      const ang = Math.atan2(s.z2 - s.z1, s.x2 - s.x1);
+      const cx = (s.x1 + s.x2) / 2, cz = (s.z1 + s.z2) / 2;
+      const px = -Math.sin(ang), pz = Math.cos(ang);
+      for (const side of [-1, 1]) {
+        const sg = new THREE.PlaneGeometry(len + s.halfW * 2 + 2.4, 1.6, 1, 1);
+        sg.rotateX(-Math.PI / 2);
+        sg.rotateY(-ang);
+        sg.translate(cx + px * side * (s.halfW + 0.8), 0.07, cz + pz * side * (s.halfW + 0.8));
+        sidewalks.push(sg);
+      }
+    }
+    if (sidewalks.length) {
+      const sm = mergeGeometries(sidewalks, false);
+      sidewalks.forEach(gg => gg.dispose());
+      if (sm) {
+        const swm = new THREE.Mesh(sm, new THREE.MeshStandardMaterial({ color: 0x565c66, roughness: 1, metalness: 0 }));
+        swm.receiveShadow = true;
+        out.group.add(swm);
+      }
+    }
     // 中线标线（分段虚线）
     const marks: THREE.BufferGeometry[] = [];
     const dash = 14, gap = 12;
@@ -655,7 +679,7 @@ function buildVehicles(corridors: Array<{ x1: number; z1: number; x2: number; z2
   let lastT = 0;
   function update(t: number) {
     if (!lastT) { lastT = t; return; }
-    let dt = (t - lastT) / 1000;
+    let dt = t - lastT; // t 为 THREE.Clock.elapsedTime（秒），直接取秒差
     lastT = t;
     if (dt > 0.1) dt = 0.1; // clamp 防跳帧
     for (const c of cars) {
@@ -708,6 +732,8 @@ export interface WorldHandle {
   fog: THREE.Fog;
   /** 全城道路图（NPC 游走用；无路网时为 null） */
   roadGraph: RoadGraph | null;
+  /** 地图用道路线段（区际快速路 + 区内主干道），供全城地图/小地图绘制 */
+  mapRoads: Array<{ x1: number; z1: number; x2: number; z2: number; kind: 'hwy' | 'major' }>;
   /** 流式加载控制器：按玩家位置动态挂载/卸载区块（阶段三） */
   streaming: { update(px: number, pz: number): void };
   /** 释放本世界独占的 GPU 资源（共享几何/材质/贴图保留，供重入复用） */
@@ -892,6 +918,11 @@ export function buildWorld(scene: Scene): WorldHandle {
   // 全城道路图（NPC 游走；无路网则 null）
   const roadGraph = nets.length ? buildRoadGraph(nets) : null;
 
+  // 地图用道路线段（区际快速路 + 区内主干道），供全城地图/小地图绘制
+  const mapRoads: Array<{ x1: number; z1: number; x2: number; z2: number; kind: 'hwy' | 'major' }> = [];
+  for (const s of highway.segs) mapRoads.push({ x1: s.x1, z1: s.z1, x2: s.x2, z2: s.z2, kind: 'hwy' });
+  for (const net of nets) for (const s of net.segs) if (s.major) mapRoads.push({ x1: s.x1, z1: s.z1, x2: s.x2, z2: s.z2, kind: 'major' });
+
   return {
     root,
     tick: (t: number) => ticks.forEach(f => f(t)),
@@ -899,6 +930,7 @@ export function buildWorld(scene: Scene): WorldHandle {
     skyMat: sky.mat,
     fog: new THREE.Fog(0xbfd4e6, 1200, 5600),
     roadGraph,
+    mapRoads,
     streaming: makeStreaming(root, streamCells),
     dispose() {
       disposeObjectAssets(root);
