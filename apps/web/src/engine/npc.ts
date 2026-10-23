@@ -257,11 +257,13 @@ export class NpcSystem {
       this.entities.push({ npc, group: g, x, z, label });
     }
 
-    // 动态随机 NPC（城市生气）
     // 动态随机 NPC（城市生气）：数量 = 显式传参 > 场景配置 > 内置 16
     const cfgN = (this.opts.data.config?.env as any)?.npc?.dynamicCount;
     const dyn = this.opts.dynamicCount ?? (typeof cfgN === 'number' ? cfgN : 16);
-    if (dyn > 0) this.buildDynamic(dyn);
+    // 保证每个地标附近都有动态 NPC 活动：总数至少覆盖全城地标数量
+    const landmarkCount = this.opts.data.landmarks.filter(l => l.latlng).length;
+    const dyn2 = Math.max(dyn, landmarkCount);
+    if (dyn2 > 0) this.buildDynamic(dyn2);
   }
 
   /** 构建方块小人（身体 + 头 + 帽子），供静态/动态 NPC 共用 */
@@ -302,15 +304,34 @@ export class NpcSystem {
         : job.honorific;
       return surname + honor;
     };
-    // 随机位置：核心城区内，且与已生成实体保持最小间距
-    const randPos = (): { x: number; z: number } => {
+    // 每个地标附近投放 1 个动态 NPC（保证各重要地点附近都有人物活动），
+    // 剩余的 dynamicCount 仍全城随机分布（方案三：地标必有人 + 全城保留填充）
+    const landmarkSpots: Array<{ x: number; z: number }> = [];
+    for (const lm of this.opts.data.landmarks) {
+      if (!lm.latlng) continue;
+      const p = proj(lm.latlng.lat, lm.latlng.lng);
+      if (p.x >= this.dynRange.xMin && p.x <= this.dynRange.xMax
+        && p.z >= this.dynRange.zMin && p.z <= this.dynRange.zMax) {
+        landmarkSpots.push(p);
+      }
+    }
+
+    // 定位：anchor 给定则在地标附近随机偏移；缺省全城随机；均与已生成实体保持最小间距
+    const spotFor = (anchor?: { x: number; z: number }): { x: number; z: number } => {
       for (let tries = 0; tries < 40; tries++) {
-        const x = this.dynRange.xMin + Math.random() * (this.dynRange.xMax - this.dynRange.xMin);
-        const z = this.dynRange.zMin + Math.random() * (this.dynRange.zMax - this.dynRange.zMin);
+        let x: number, z: number;
+        if (anchor) {
+          x = anchor.x + (Math.random() * 2 - 1) * 16;
+          z = anchor.z + (Math.random() * 2 - 1) * 16;
+        } else {
+          x = this.dynRange.xMin + Math.random() * (this.dynRange.xMax - this.dynRange.xMin);
+          z = this.dynRange.zMin + Math.random() * (this.dynRange.zMax - this.dynRange.zMin);
+        }
         const ok = this.entities.every(e => Math.hypot(e.x - x, e.z - z) >= DYN_MIN_DIST);
         if (ok) return { x, z };
       }
-      return { x: this.dynRange.xMin, z: this.dynRange.zMin };
+      // 40 次失败：锚点回退到地标本身，随机回退到范围左下角
+      return anchor ? { x: anchor.x, z: anchor.z } : { x: this.dynRange.xMin, z: this.dynRange.zMin };
     };
 
     // 场景 shopItems（供小摊引用真实价格/名称）
@@ -319,7 +340,8 @@ export class NpcSystem {
     for (let i = 0; i < count; i++) {
       const job = pickJob();
       const name = rndName(job);
-      const { x, z } = randPos();
+      const anchor = i < landmarkSpots.length ? landmarkSpots[i] : undefined;
+      const { x, z } = spotFor(anchor);
       const group = this.makeBody(job.body, job.hat);
       const label = this.nameSprite(name);
       group.add(label);
