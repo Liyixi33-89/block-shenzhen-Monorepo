@@ -46,7 +46,9 @@ export interface PlayerAPI {
 }
 
 export function createPlayer(camera: THREE.PerspectiveCamera, init: PlayerInit): PlayerAPI {
-  const position = new THREE.Vector3(init.x, 0, init.z);
+  // 出生点落点碰撞安全：期望点若被建筑/地标占用则外挪到空位（防出生被楼体遮挡）
+  const safe = collision.findFreeSpot(init.x, init.z, BODY_R);
+  const position = new THREE.Vector3(safe.x, 0, safe.z);
   let facing = init.facing;
   let camDist = CAM_DIST;
   let camPitch = 0.42;   // 俯仰（弧度）
