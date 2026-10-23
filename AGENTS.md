@@ -104,6 +104,7 @@ AI 对「修改」类操作按此分级收敛；高破坏动作（依赖变更/�
 | 知识库全貌 / 怎么检索 | `.agent/knowledge/index.md` |
 | 跨端：领域术语/常量/区色 + 内容 JSON 字段语义 + 架构决策 | `.agent/knowledge/shared/` |
 | 前端：分层 / 引擎模块 / 渲染 / 前端 ADR/FAQ | `.agent/knowledge/frontend/` |
+| 后台：编辑器 / cookie 会话 / 版本灰度 / MapPicker | `.agent/knowledge/admin/` |
 | 后端：DDD / 限界上下文 / REST / 后端 ADR/FAQ | `.agent/knowledge/backend/` |
 
 ## Skill 体系（skills）

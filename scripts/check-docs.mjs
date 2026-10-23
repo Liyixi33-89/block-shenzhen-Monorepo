@@ -23,8 +23,8 @@ for (const f of ['README.md', 'architecture.md', 'commands.md', 'rules.md', 'tas
   mustExist(join(AGENT, f), `.agent/${f} 分册缺失`);
 }
 
-// ── 2. knowledge 三端子目录 + README ──────────────────────────────
-for (const sub of ['shared', 'frontend', 'backend']) {
+// ── 2. knowledge 各端子目录 + README ──────────────────────────────
+for (const sub of ['shared', 'frontend', 'admin', 'backend']) {
   const dir = join(AGENT, 'knowledge', sub);
   if (!existsSync(dir) || !statSync(dir).isDirectory()) {
     violations.push(`[缺失] .agent/knowledge/${sub}/ 目录`);

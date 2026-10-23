@@ -9,6 +9,7 @@
 | 全库结构、怎么检索 | `index.md`（本文件） |
 | **共享/跨端**：内容 JSON 字段、schema 校验、领域术语、工程脚本、产品文档、架构级决策 | `shared/` |
 | **前端**：洋葱分层、引擎各系统模块、渲染性能、前端 ADR/FAQ | `frontend/` |
+| **后台**：Vue3 内容管理、cookie 会话、各页签编辑器、版本/灰度/diff、MapPicker | `admin/` |
 | **后端**：DDD 架构、限界上下文模块、REST、灰度、后端 ADR/FAQ | `backend/` |
 
 ### shared/（跨端共用）
@@ -31,6 +32,14 @@
 | `decisions.md` | 前端专属 ADR-002/004/006-011 |
 | `faq.md` | 前端高频疑问 |
 
+### admin/（apps/admin）
+| 文件 | 内容 |
+|---|---|
+| `architecture.md` | 后台架构（目录分层 / cookie 会话 / SceneDoc 状态机 / 编辑模式） |
+| `modules.md` | 各页签编辑器详解（内容编辑 11 页签 + 管理 3 页签 + 版本/灰度/diff） |
+| `glossary.md` | 后台专用术语（会话 / 编辑操作 / 版本管理 / MapPicker） |
+| `faq.md` | 后台高频疑问 |
+
 ### backend/（apps/server-java）
 | 文件 | 内容 |
 |---|---|
@@ -43,7 +52,7 @@
 ## 检索原则
 
 1. **先查后答**：涉及「本项目的领域定义、数据字段、某端内部实现、历史决策、既定约定」时，先检索对应知识条目，不凭记忆猜测。
-2. **按端定位**：先判断问题属于共享/前端/后端，再进对应子目录。
+2. **按端定位**：先判断问题属于共享/前端/后台/后端，再进对应子目录。
 3. **按需深入**：只读与当前任务相关的条目，控制上下文。
 4. **知识优先于源码**：`shared/data-model.md` 是字段语义的权威描述；源码只是实现。
 
@@ -57,6 +66,7 @@
 
 - 改动数据模型（schema/内容 JSON 新增字段）→ 更新 `shared/data-model.md` + `shared/schema.md`。
 - 改前端引擎系统 → 更新 `frontend/modules.md`/`rendering.md`。
+- 改后台编辑器/认证/版本管理 → 更新 `admin/modules.md`/`architecture.md`。
 - 改后端上下文/REST → 更新 `backend/modules.md`。
 - 改了 `scripts/` 验证脚本或门禁语义 → 更新 `shared/engineering.md`。
 - 新增/更新 `docs/` 长文档 → 更新 `shared/product.md` 索引与要点。
