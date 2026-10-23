@@ -97,6 +97,10 @@ export class GameEngine {
   private investAcc = { v: 0 };
   private fpsAcc = { v: 0 };
   private fpsFrames = { v: 0 };
+  /** 自适应渲染档位（0 高 / 1 中 / 2 低）：低帧率自动降像素比，高帧率恢复 */
+  private qualityTier = 0;
+  private lowFpsTime = 0;
+  private highFpsTime = 0;
   /** 主循环每帧推进的运行时上下文（复用引用，见 engine/mainloop） */
   private frame: MainloopRuntime | null = null;
   private loadedPhases = new Set<string>();
@@ -599,7 +603,37 @@ export class GameEngine {
     const dt = Math.min(this.clock.getDelta(), 0.1);
     const t = this.clock.elapsedTime;
     if (this.frame) stepFrame(this.frame, dt, t);
+    this.tunePerformance(dt);
   };
+
+  /**
+   * 自适应渲染降级（借鉴广州参考项目三档质量思路，但按帧率自动调档，无需用户操作）：
+   * - FPS 持续 <28 约 1.5s → 降一档（像素比上限 2→1.5→1，GPU 填充率大幅下降）
+   * - FPS 持续 >55 约 5s → 升一档（恢复画质，最高回到 devicePixelRatio 上限 2）
+   * 只调整像素比，不动阴影贴图，避免阴影重建的闪烁风险。
+   */
+  private tunePerformance(dt: number) {
+    const fps = this.state.fps;
+    if (fps <= 0) return; // fps 尚未首次统计
+    if (fps < 28) { this.lowFpsTime += dt; this.highFpsTime = 0; }
+    else if (fps > 55) { this.highFpsTime += dt; this.lowFpsTime = 0; }
+    else { this.lowFpsTime = Math.max(0, this.lowFpsTime - dt); this.highFpsTime = Math.max(0, this.highFpsTime - dt); }
+
+    if (this.lowFpsTime > 1.5 && this.qualityTier < 2) {
+      this.setQualityTier(this.qualityTier + 1);
+      this.lowFpsTime = 0;
+    } else if (this.highFpsTime > 5 && this.qualityTier > 0) {
+      this.setQualityTier(this.qualityTier - 1);
+      this.highFpsTime = 0;
+    }
+  }
+
+  private setQualityTier(tier: number) {
+    this.qualityTier = tier;
+    const dpr = window.devicePixelRatio || 1;
+    const scale = tier === 0 ? Math.min(dpr, 2) : tier === 1 ? Math.min(dpr, 1.5) : Math.min(dpr, 1);
+    this.renderer.setPixelRatio(scale);
+  }
 
   dispose() {
     this.disposed = true;
