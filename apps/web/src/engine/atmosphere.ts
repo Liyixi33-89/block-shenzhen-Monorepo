@@ -46,6 +46,13 @@ export function buildSea(): { mesh: THREE.Mesh; update: (t: number) => void } {
     uDeep: { value: new THREE.Color(0x1d4a5a) },     // 深海/深水色
     uShallow: { value: new THREE.Color(0x2e6f9e) },  // 近岸浅水色
     uSky: { value: new THREE.Color(0x9fc4dc) },      // 菲涅尔天空反射色
+    // fog:true 时 three 会 refreshFogUniforms 直接访问这些 .value，必须预声明避免崩溃；
+    // toneMappingExposure 由渲染器按 ACESFilmic 曝光逐帧覆盖，供 tonemapping_fragment 使用
+    fogColor: { value: new THREE.Color(0xbfd4e6) },
+    fogNear: { value: 1200 },
+    fogFar: { value: 5600 },
+    fogDensity: { value: 0.00025 },
+    toneMappingExposure: { value: 1 },
   };
 
   const mat = new THREE.ShaderMaterial({
@@ -56,7 +63,8 @@ export function buildSea(): { mesh: THREE.Mesh; update: (t: number) => void } {
       #include <fog_pars_vertex>
       void main() {
         vWorld = (modelMatrix * vec4(position, 1.0)).xyz;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0); // fog_vertex 依赖 mvPosition
+        gl_Position = projectionMatrix * mvPosition;
         #include <fog_vertex>
       }
     `,
